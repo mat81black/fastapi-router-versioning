@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+
+# Build / dist
+build/
+dist/
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime
+*.pid
+*.log
+*.tmp
+
+# Local environment
+.env
+.run/
