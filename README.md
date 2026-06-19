@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/fastapi-router-versioning)](https://pypi.org/project/fastapi-router-versioning/)
 
-Native, router-based API versioning for FastAPI — with no extra dependencies.
+Native, router-based API versioning for FastAPI. Annotate your routes with `@api_version`, call `.versionize()`, and get isolated URL prefixes, per-version Swagger UI, and a full route lifecycle — all without touching your existing application structure.
 
 ---
 
