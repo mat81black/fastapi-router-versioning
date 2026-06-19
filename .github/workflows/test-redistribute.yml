@@ -40,7 +40,7 @@ jobs:
       - name: Install test dependencies
         run: |
           cd dist/fastapi_router_versioning*/
-          pip install --group tests --editable .[all]
+          pip install --group dev --editable .
       - name: Run source distribution tests
         run: |
           cd dist/fastapi_router_versioning*/
