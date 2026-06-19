@@ -40,6 +40,7 @@ Issues = "https://github.com/mat81black/fastapi-router-versioning/issues"
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "httpx2>=0.28.0",
     "ruff>=0.14.0",
     "pytest>=9.0.0",
@@ -53,12 +54,7 @@ dev = [
     "pyrefly>=0.60.0",
     "uvicorn>=0.49.0",
     "zizmor>=1.0.0",
-    "httpx>=0.28.1",
 ]
-
-[[tool.uv.index]]
-url = "https://repo.tmaxlab.com/repository/tmax-pypi/simple/"
-
 
 [tool.hatch.version]
 path = "fastapi_router_versioning/__init__.py"
