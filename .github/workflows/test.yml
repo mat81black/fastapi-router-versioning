@@ -36,7 +36,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       UV_PYTHON: ${{ matrix.python-version }}
-      UV_RESOLUTION: ${{ matrix.uv-resolution }}
 
     steps:
       - name: Dump GitHub context
