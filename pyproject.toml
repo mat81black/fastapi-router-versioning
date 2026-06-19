@@ -30,7 +30,7 @@ classifiers = [
     "Typing :: Typed"
 ]
 dependencies = [
-    "fastapi >=0.115.0, !=0.137.0, !=0.137.1",
+    "fastapi >=0.120.0, !=0.137.0, !=0.137.1",
 ]
 
 [project.urls]
