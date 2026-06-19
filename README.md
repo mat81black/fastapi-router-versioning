@@ -192,16 +192,43 @@ GET /versions
 
 ### Custom URL format
 
+Use `prefix_format` and `semantic_version_format` to control how versions appear in URLs and docs.
+
+**Major-only versioning** (`/v1`, `/v2`, `/v3`):
+
 ```python
+from fastapi import APIRouter, FastAPI
+from fastapi_router_versioning import RouterVersioner, VersionFormat, api_version
+
+app = FastAPI()
+router = APIRouter()
+
+
+@router.get("/items")
+@api_version((1, 0))
+def get_items_v1():
+    return {"items": ["a", "b"]}
+
+
+@router.get("/items")
+@api_version((2, 0))
+def get_items_v2():
+    return {"items": ["a", "b", "c"]}
+
+
 RouterVersioner(
     app=app,
     routers=router,
     version_format=VersionFormat.SEMVER,
-    prefix_format="/api/v{major}",
-    semantic_version_format="v{major}.{minor}",
+    prefix_format="/v{major}",
+    semantic_version_format="{major}",
+    latest_prefix="/latest",
 ).versionize()
-# Mounts /api/v1/...  with docs titled "v1.0"
+# Mounts: GET /v1/items   GET /v2/items   GET /latest/items
+# Swagger at /v1/docs, /v2/docs — titles show "v1", "v2"
 ```
+
+The route decorator still uses `(major, minor)` tuples — only the URL and doc label change.
 
 ### Callback hook
 
