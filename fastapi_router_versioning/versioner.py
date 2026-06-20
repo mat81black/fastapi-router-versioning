@@ -122,6 +122,8 @@ class RouterVersioner:
         include_versions_route: bool = False,
         sort_routes: bool = False,
         callback: Callable[[APIRouter, VersionT, str], None] | None = None,
+        webhook_routers: list[APIRouter] | APIRouter | None = None,
+        openapi_hook: Callable[[dict[str, Any], VersionT], dict[str, Any]] | None = None,
         swagger_js_url: str | None = None,
         swagger_css_url: str | None = None,
         swagger_favicon_url: str | None = None,
@@ -148,6 +150,14 @@ class RouterVersioner:
         :param include_versions_route: If True, adds a 'GET /versions' endpoint returning info on all active API versions.
         :param sort_routes: If True, sorts all routes alphabetically by path.
         :param callback: Optional hook invoked every time a versioned APIRouter is created.
+        :param webhook_routers: A single APIRouter or a list of APIRouters containing webhook definitions
+            annotated with @api_version. When provided, each version's OpenAPI schema shows only the
+            webhooks active in that version (using the same introduce/remove lifecycle as regular routes).
+            When None, every version inherits app.webhooks unchanged.
+        :param openapi_hook: Optional hook applied to the generated OpenAPI schema for each version.
+            Receives the schema dict and the current version; must return the (modified) schema dict.
+            Use this to add custom extensions, logos, or version-specific metadata that would
+            otherwise be bypassed by the per-version schema generation.
         :param swagger_js_url: Custom URL for the Swagger UI JS bundle. Defaults to FastAPI's CDN URL.
         :param swagger_css_url: Custom URL for the Swagger UI CSS. Defaults to FastAPI's CDN URL.
         :param swagger_favicon_url: Custom URL for the Swagger UI favicon. Defaults to FastAPI's favicon.
@@ -175,6 +185,10 @@ class RouterVersioner:
         self._include_versions_route = include_versions_route
         self._sort_routes = sort_routes
         self._callback = callback
+        self._webhook_routers: list[APIRouter] | None = (
+            [webhook_routers] if isinstance(webhook_routers, APIRouter) else webhook_routers
+        )
+        self._openapi_hook = openapi_hook
         self._swagger_js_url = swagger_js_url
         self._swagger_css_url = swagger_css_url
         self._swagger_favicon_url = swagger_favicon_url
@@ -217,15 +231,18 @@ class RouterVersioner:
     def versionize(self) -> list[VersionT]:
         latest_version: VersionT | None = None
         latest_routes: dict[tuple[str, str], Any] = {}
+        latest_webhooks: list[Any] = []
 
         routes_by_version = self._get_routes_by_version()
         versions = list(routes_by_version.keys())
+        webhooks_by_version = self._get_webhooks_by_version()
 
         for version, routes_by_key in routes_by_version.items():
             version_prefix = self._format_string(self._prefix_format, version)
+            active_webhooks = self._resolve_webhooks_for_version(version, webhooks_by_version)
 
             version_router = self._build_version_router(
-                version=version, version_prefix=version_prefix, routes_by_key=routes_by_key
+                version=version, version_prefix=version_prefix, routes_by_key=routes_by_key, webhooks=active_webhooks
             )
 
             if self._callback:
@@ -235,10 +252,14 @@ class RouterVersioner:
 
             latest_version = version
             latest_routes = routes_by_key
+            latest_webhooks = active_webhooks
 
         if self._latest_prefix is not None and latest_version is not None:
             latest_router = self._build_version_router(
-                version=latest_version, version_prefix=self._latest_prefix, routes_by_key=latest_routes
+                version=latest_version,
+                version_prefix=self._latest_prefix,
+                routes_by_key=latest_routes,
+                webhooks=latest_webhooks,
             )
             if self._callback:
                 self._callback(latest_router, latest_version, self._latest_prefix)
@@ -254,6 +275,7 @@ class RouterVersioner:
         version: VersionT,
         version_prefix: str,
         routes_by_key: dict[tuple[str, str], Any],
+        webhooks: list[Any],
     ) -> APIRouter:
         router = APIRouter(prefix=version_prefix, responses=self._app.router.responses)
 
@@ -263,7 +285,7 @@ class RouterVersioner:
         for route in routes_by_key.values():
             self._add_route_to_router(route=route, router=router, version=version)
 
-        self._add_version_docs(router=router, version=version, version_prefix=version_prefix)
+        self._add_version_docs(router=router, version=version, version_prefix=version_prefix, webhooks=webhooks)
 
         return router
 
@@ -302,6 +324,54 @@ class RouterVersioner:
 
         return routes_by_version
 
+    def _get_webhooks_by_version(self) -> dict[VersionT, list[Any]]:
+        if not self._webhook_routers:
+            return {}
+
+        all_webhooks: list[Any] = []
+        for router in self._webhook_routers:
+            all_webhooks.extend(_iter_routes_flat(router.routes))
+
+        webhooks_introduced: dict[VersionT, list[Any]] = defaultdict(list)
+        for route in all_webhooks:
+            v = self._extract_version_attribute(route.endpoint, _ATTR_API_VERSION, route.path)
+            webhooks_introduced[v if v is not None else self._default_version].append(route)
+
+        webhooks_removed: dict[VersionT, list[Any]] = defaultdict(list)
+        for route in all_webhooks:
+            v = self._extract_version_attribute(route.endpoint, _ATTR_REMOVE_IN, route.path)
+            if v is not None:
+                webhooks_removed[v].append(route)
+
+        combined_keys = set(webhooks_introduced.keys()) | set(webhooks_removed.keys())
+        result: dict[VersionT, list[Any]] = {}
+        active: dict[tuple[str, str], Any] = {}
+
+        for version in sorted(combined_keys):
+            for route in webhooks_introduced[version]:
+                active.update(self._get_route_keys(route=route))
+            for route in webhooks_removed.get(version, []):
+                for key in self._get_route_keys(route=route):
+                    active.pop(key, None)
+            result[version] = list(active.values())
+
+        return result
+
+    def _resolve_webhooks_for_version(
+        self, version: VersionT, webhooks_by_version: dict[VersionT, list[Any]]
+    ) -> list[Any]:
+        if not webhooks_by_version:
+            # webhook_routers not provided: fall back to global app.webhooks
+            return list(self._app.webhooks.routes)
+        candidates: list[VersionT] = []
+        if isinstance(version, tuple):
+            candidates = [v for v in webhooks_by_version if isinstance(v, tuple) and v <= version]
+        else:
+            candidates = [v for v in webhooks_by_version if isinstance(v, str) and v <= version]
+        if not candidates:
+            return []
+        return webhooks_by_version[max(candidates)]
+
     @classmethod
     def _get_route_keys(cls, route: Any) -> dict[tuple[str, str], Any]:
         path = route.path
@@ -316,14 +386,14 @@ class RouterVersioner:
 
         return routes_by_key
 
-    def _add_version_docs(self, router: APIRouter, version: VersionT, version_prefix: str) -> None:
+    def _add_version_docs(self, router: APIRouter, version: VersionT, version_prefix: str, webhooks: list[Any]) -> None:
         doc_version_str = self._format_string(self._semantic_version_format, version)
         title = f"{self._app.title} - v{doc_version_str}"
         versioned_tags = self._collect_versioned_tags(router)
         openapi_url = self._app.openapi_url
 
         if self._include_version_openapi_route and openapi_url is not None:
-            self._add_openapi_route(router, title, doc_version_str, versioned_tags, openapi_url)
+            self._add_openapi_route(router, title, doc_version_str, versioned_tags, openapi_url, version, webhooks)
 
         if self._include_version_docs and self._docs_url is not None and openapi_url is not None:
             self._add_swagger_ui_routes(router, title, version_prefix, self._docs_url, openapi_url)
@@ -349,6 +419,8 @@ class RouterVersioner:
         doc_version_str: str,
         versioned_tags: list[dict[str, Any]],
         openapi_url: str,
+        version: VersionT,
+        webhooks: list[Any],
     ) -> None:
         @router.get(openapi_url, include_in_schema=False)
         async def get_openapi(req: Request) -> Any:
@@ -359,7 +431,7 @@ class RouterVersioner:
                 summary=self._app.summary,
                 description=self._app.description,
                 routes=router.routes,
-                webhooks=self._app.webhooks.routes,
+                webhooks=webhooks,
                 tags=versioned_tags,
                 servers=self._app.servers,
                 terms_of_service=self._app.terms_of_service,
@@ -375,6 +447,9 @@ class RouterVersioner:
                 if root_path not in server_urls:
                     schema = dict(schema)
                     schema["servers"] = [{"url": root_path}] + schema.get("servers", [])
+
+            if self._openapi_hook is not None:
+                schema = self._openapi_hook(schema, version)
 
             return schema
 
