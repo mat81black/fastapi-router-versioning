@@ -15,6 +15,8 @@ Native, router-based API versioning for FastAPI. Annotate your routes with `@api
 - **Per-version docs** — isolated Swagger UI, ReDoc, and `openapi.json` for every version
 - **Declarative lifecycle** — introduce, deprecate, and remove routes with a single decorator
 - **Latest alias** — serve the newest version under a stable `/latest` prefix
+- **Self-hosted docs** — point Swagger UI and ReDoc at your own assets for air-gapped environments
+- **Reverse proxy aware** — doc URLs include the ASGI `root_path` at request time, so sub-app mounting works out of the box
 - **Broad compatibility** — works with nested routers, WebSockets, and `Depends`
 
 ---
@@ -88,6 +90,8 @@ RouterVersioner(app=app, routers=router, version_format=VersionFormat.CALVER).ve
 
 Any string is a valid CalVer token: `"2025-01-01"`, `"v3"`, `"stable"`, etc.
 
+> **CalVer sorting:** versions are sorted lexicographically, so strings must be comparable in the intended order. ISO dates (`"2025-01-01"`) and zero-padded numbers (`"v01"`, `"v02"`) work correctly. Strings like `"v1"`, `"v10"`, `"v2"` will **not** sort correctly and will cause routes to appear in the wrong versions.
+
 ---
 
 ## Route lifecycle
@@ -127,6 +131,12 @@ Routes without `@api_version` fall back to `default_version` (default: `(1, 0)` 
 | `include_versions_route` | `bool` | `False` | Add a `GET /versions` endpoint listing all active versions |
 | `sort_routes` | `bool` | `False` | Sort routes alphabetically by path within each version |
 | `callback` | `Callable[[APIRouter, VersionT, str], None] \| None` | `None` | Hook called once per versioned router, before it is included in the app |
+| `swagger_js_url` | `str \| None` | FastAPI CDN | Custom URL for the Swagger UI JS bundle |
+| `swagger_css_url` | `str \| None` | FastAPI CDN | Custom URL for the Swagger UI CSS |
+| `swagger_favicon_url` | `str \| None` | FastAPI favicon | Custom URL for the Swagger UI favicon |
+| `redoc_js_url` | `str \| None` | FastAPI CDN | Custom URL for the ReDoc JS bundle |
+| `redoc_favicon_url` | `str \| None` | FastAPI favicon | Custom URL for the ReDoc favicon |
+| `redoc_with_google_fonts` | `bool` | `True` | If `False`, ReDoc will not load Google Fonts |
 
 Call `.versionize()` after constructing the object. It returns the list of active versions.
 
@@ -197,25 +207,6 @@ Use `prefix_format` and `semantic_version_format` to control how versions appear
 **Major-only versioning** (`/v1`, `/v2`, `/v3`):
 
 ```python
-from fastapi import APIRouter, FastAPI
-from fastapi_router_versioning import RouterVersioner, VersionFormat, api_version
-
-app = FastAPI()
-router = APIRouter()
-
-
-@router.get("/items")
-@api_version((1, 0))
-def get_items_v1():
-    return {"items": ["a", "b"]}
-
-
-@router.get("/items")
-@api_version((2, 0))
-def get_items_v2():
-    return {"items": ["a", "b", "c"]}
-
-
 RouterVersioner(
     app=app,
     routers=router,
@@ -229,6 +220,50 @@ RouterVersioner(
 ```
 
 The route decorator still uses `(major, minor)` tuples — only the URL and doc label change.
+
+### Multiple routers
+
+Pass a list of routers to version routes that are split across modules:
+
+```python
+RouterVersioner(
+    app=app,
+    routers=[users_router, products_router],
+    version_format=VersionFormat.SEMVER,
+).versionize()
+```
+
+All routers are versioned together under the same prefix tree.
+
+### Self-hosted docs (air-gapped environments)
+
+By default, Swagger UI and ReDoc assets are loaded from the FastAPI CDN. In air-gapped or corporate environments, point them at assets you host yourself:
+
+```python
+RouterVersioner(
+    app=app,
+    routers=router,
+    version_format=VersionFormat.SEMVER,
+    swagger_js_url="/static/swagger-ui-bundle.js",
+    swagger_css_url="/static/swagger-ui.css",
+    swagger_favicon_url="/static/favicon.png",
+    redoc_js_url="/static/redoc.standalone.js",
+    redoc_favicon_url="/static/favicon.png",
+    redoc_with_google_fonts=False,
+).versionize()
+```
+
+See [`examples/download_static_assets.py`](examples/download_static_assets.py) for a ready-made script that downloads all required assets in one step, and [`examples/self_hosted_docs_app.py`](examples/self_hosted_docs_app.py) for a complete working example.
+
+### Reverse proxy / sub-app mounting
+
+When the app runs behind a reverse proxy or is mounted as a sub-application, the ASGI `root_path` is included in all per-version doc URLs automatically — no extra configuration needed:
+
+```python
+parent = FastAPI()
+parent.mount("/api", app)  # root_path="/api" is injected at request time
+# /api/v1_0/docs correctly references /api/v1_0/openapi.json
+```
 
 ### Callback hook
 
@@ -246,15 +281,19 @@ RouterVersioner(
 ).versionize()
 ```
 
-### Multiple routers
+---
 
-```python
-RouterVersioner(
-    app=app,
-    routers=[users_router, items_router],
-    version_format=VersionFormat.SEMVER,
-).versionize()
-```
+## Examples
+
+Runnable examples are available in the [`examples/`](examples/) directory:
+
+| File | What it shows |
+|---|---|
+| [`semver_app.py`](examples/semver_app.py) | Full SemVer lifecycle (introduce, deprecate, remove) |
+| [`calver_app.py`](examples/calver_app.py) | Same lifecycle with CalVer date strings |
+| [`semver_major_only_app.py`](examples/semver_major_only_app.py) | Custom prefix `/v1`, `/v2` via `prefix_format` |
+| [`multi_router_app.py`](examples/multi_router_app.py) | Multiple routers versioned together |
+| [`self_hosted_docs_app.py`](examples/self_hosted_docs_app.py) | Swagger UI and ReDoc from local static assets |
 
 ---
 
