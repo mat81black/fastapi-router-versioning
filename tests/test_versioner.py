@@ -270,6 +270,60 @@ def test_openapi_tags_filtering_coverage() -> None:
     assert schema["tags"][0]["name"] == "auth"
 
 
+def test_openapi_hook_is_applied_to_schema() -> None:
+    """openapi_hook receives the generated schema and the current version; its return value is served."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/test")
+    @api_version((1, 0))
+    def test_route() -> dict[str, str]: ...
+
+    @router.get("/test")
+    @api_version((2, 0))
+    def test_route_v2() -> dict[str, str]: ...
+
+    def my_hook(schema: dict, version: tuple[int, int]) -> dict:
+        schema["info"]["x-custom"] = f"v{version[0]}.{version[1]}"
+        return schema
+
+    versioner = RouterVersioner(
+        app=app,
+        routers=router,
+        version_format=VersionFormat.SEMVER,
+        openapi_hook=my_hook,
+    )
+    versioner.versionize()
+
+    client = TestClient(app)
+
+    response_v1 = client.get("/v1_0/openapi.json")
+    assert response_v1.status_code == 200
+    assert response_v1.json()["info"]["x-custom"] == "v1.0"
+
+    response_v2 = client.get("/v2_0/openapi.json")
+    assert response_v2.status_code == 200
+    assert response_v2.json()["info"]["x-custom"] == "v2.0"
+
+
+def test_openapi_hook_none_does_not_affect_schema() -> None:
+    """When openapi_hook is None (default), the schema is returned unmodified."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/test")
+    @api_version((1, 0))
+    def test_route() -> dict[str, str]: ...
+
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER)
+    versioner.versionize()
+
+    client = TestClient(app)
+    response = client.get("/v1_0/openapi.json")
+    assert response.status_code == 200
+    assert "x-custom" not in response.json().get("info", {})
+
+
 def test_openapi_tags_empty_when_no_route_uses_a_tag() -> None:
     """Tags list is empty when none of the routes in the version carry any tag."""
     app = FastAPI(openapi_tags=[{"name": "auth", "description": "Authentication"}])
@@ -572,6 +626,190 @@ def test_default_version_mixed_with_explicitly_decorated_routes() -> None:
     # v3.0: /implicit starts here; /explicit carried forward from v2.0
     assert client.get("/v3_0/implicit").status_code == 200
     assert client.get("/v3_0/explicit").status_code == 200
+
+
+def test_openapi_callbacks_are_propagated_to_versioned_routes() -> None:
+    """OpenAPI callbacks defined on a route are propagated to every versioned copy of that route."""
+    app = FastAPI()
+    callback_router = APIRouter()
+
+    @callback_router.post("{$url}")
+    def on_item_created(body: dict[str, str]) -> None: ...
+
+    router = APIRouter()
+
+    @router.post("/items", callbacks=callback_router.routes)
+    @api_version((1, 0))
+    def create_item() -> dict[str, str]: ...
+
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER)
+    versioner.versionize()
+
+    client = TestClient(app)
+    response = client.get("/v1_0/openapi.json")
+    assert response.status_code == 200
+    schema = response.json()
+
+    post_op = schema["paths"]["/v1_0/items"]["post"]
+    assert "callbacks" in post_op
+    assert len(post_op["callbacks"]) > 0
+
+
+def test_webhook_routers_are_versioned_per_version() -> None:
+    """webhook_routers: each version's OpenAPI schema shows only the webhooks active in that version."""
+    app = FastAPI()
+
+    webhook_router = APIRouter()
+
+    @webhook_router.post("/order-created")
+    @api_version((1, 0))
+    def webhook_v1(body: dict[str, str]) -> None: ...
+
+    @webhook_router.post("/order-created")
+    @api_version((2, 0))
+    def webhook_v2(body: dict[str, str]) -> None: ...
+
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items() -> dict[str, str]: ...
+
+    @router.get("/orders")
+    @api_version((2, 0))
+    def get_orders() -> dict[str, str]: ...
+
+    versioner = RouterVersioner(
+        app=app,
+        routers=router,
+        webhook_routers=webhook_router,
+        version_format=VersionFormat.SEMVER,
+    )
+    versioner.versionize()
+
+    client = TestClient(app)
+
+    schema_v1 = client.get("/v1_0/openapi.json").json()
+    schema_v2 = client.get("/v2_0/openapi.json").json()
+
+    # v1: webhook_v1 active (introduced at (1,0))
+    assert "/order-created" in schema_v1.get("webhooks", {})
+    # v2: webhook_v2 supersedes webhook_v1 (same path+method key → only one entry)
+    assert "/order-created" in schema_v2.get("webhooks", {})
+
+
+def test_webhook_routers_remove_in_removes_webhook_from_version() -> None:
+    """Webhooks with remove_in are absent from that version onwards."""
+    app = FastAPI()
+
+    webhook_router = APIRouter()
+
+    @webhook_router.post("/ping")
+    @api_version((1, 0), remove_in=(2, 0))
+    def webhook_ping(body: dict[str, str]) -> None: ...
+
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items() -> dict[str, str]: ...
+
+    @router.get("/items")
+    @api_version((2, 0))
+    def get_items_v2() -> dict[str, str]: ...
+
+    versioner = RouterVersioner(
+        app=app,
+        routers=router,
+        webhook_routers=webhook_router,
+        version_format=VersionFormat.SEMVER,
+    )
+    versioner.versionize()
+
+    client = TestClient(app)
+
+    schema_v1 = client.get("/v1_0/openapi.json").json()
+    schema_v2 = client.get("/v2_0/openapi.json").json()
+
+    assert "/ping" in schema_v1.get("webhooks", {})
+    assert "/ping" not in schema_v2.get("webhooks", {})
+
+
+def test_webhook_routers_none_falls_back_to_app_webhooks() -> None:
+    """When webhook_routers is not provided, every version inherits app.webhooks."""
+    app = FastAPI()
+
+    @app.webhooks.post("/global-event")
+    def global_webhook(body: dict[str, str]) -> None: ...
+
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items() -> dict[str, str]: ...
+
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER)
+    versioner.versionize()
+
+    client = TestClient(app)
+    schema_v1 = client.get("/v1_0/openapi.json").json()
+    assert "/global-event" in schema_v1.get("webhooks", {})
+
+
+def test_webhook_routers_no_webhook_before_first_version() -> None:
+    """When all webhook versions are higher than the current route version, returns no webhooks."""
+    app = FastAPI()
+    webhook_router = APIRouter()
+
+    @webhook_router.post("/late")
+    @api_version((2, 0))
+    def webhook_late(body: dict[str, str]) -> None: ...
+
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items() -> dict[str, str]: ...
+
+    @router.get("/orders")
+    @api_version((2, 0))
+    def get_orders() -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=router, webhook_routers=webhook_router, version_format=VersionFormat.SEMVER
+    ).versionize()
+
+    client = TestClient(app)
+    # v1: webhook introduced at (2,0) → no webhooks yet
+    schema_v1 = client.get("/v1_0/openapi.json").json()
+    assert not schema_v1.get("webhooks")
+    # v2: webhook present
+    schema_v2 = client.get("/v2_0/openapi.json").json()
+    assert "/late" in schema_v2.get("webhooks", {})
+
+
+def test_webhook_routers_calver() -> None:
+    """webhook_routers work with CalVer versioning (covers the str branch in _resolve_webhooks_for_version)."""
+    app = FastAPI()
+    webhook_router = APIRouter()
+
+    @webhook_router.post("/event")
+    @api_version("2025-01")
+    def webhook_v1(body: dict[str, str]) -> None: ...
+
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version("2025-01")
+    def get_items() -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=router, webhook_routers=webhook_router, version_format=VersionFormat.CALVER
+    ).versionize()
+
+    client = TestClient(app)
+    schema = client.get("/2025-01/openapi.json").json()
+    assert "/event" in schema.get("webhooks", {})
 
 
 def test_iter_routes_flat_fallback_without_route_context_fn() -> None:
