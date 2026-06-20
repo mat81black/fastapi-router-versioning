@@ -1,23 +1,24 @@
-# fastapi-router-versioning
+# FastAPI Router Versioning (Native API Versioning)
 
 [![PyPI](https://img.shields.io/pypi/v/fastapi-router-versioning)](https://pypi.org/project/fastapi-router-versioning/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/fastapi-router-versioning)](https://pypi.org/project/fastapi-router-versioning/)
 
-Native, router-based API versioning for FastAPI. Annotate your routes with `@api_version`, call `.versionize()`, and get isolated URL prefixes, per-version Swagger UI, and a full route lifecycle — all without touching your existing application structure.
+The native, router-based solution for **API versioning in FastAPI**.
+
+If you want to implement **FastAPI API versioning**, you can simply annotate your routes with `@api_version`, call `.versionize()`, and get isolated URL prefixes, per-version Swagger UI, and a full route lifecycle — all without touching your existing application structure.
 
 ---
 
 ## Features
 
-- **Zero extra dependencies** — only FastAPI itself is required
 - **SemVer and CalVer** — version routes with `(major, minor)` tuples or arbitrary strings
 - **Per-version docs** — isolated Swagger UI, ReDoc, and `openapi.json` for every version
 - **Declarative lifecycle** — introduce, deprecate, and remove routes with a single decorator
 - **Latest alias** — serve the newest version under a stable `/latest` prefix
 - **Self-hosted docs** — point Swagger UI and ReDoc at your own assets for air-gapped environments
 - **Reverse proxy aware** — doc URLs include the ASGI `root_path` at request time, so sub-app mounting works out of the box
-- **Broad compatibility** — works with nested routers, WebSockets, and `Depends`
+- **Broad compatibility** — works with nested routers, WebSockets, `Depends`, and OpenAPI Callbacks
 
 ---
 
@@ -131,6 +132,8 @@ Routes without `@api_version` fall back to `default_version` (default: `(1, 0)` 
 | `include_versions_route` | `bool` | `False` | Add a `GET /versions` endpoint listing all active versions |
 | `sort_routes` | `bool` | `False` | Sort routes alphabetically by path within each version |
 | `callback` | `Callable[[APIRouter, VersionT, str], None] \| None` | `None` | Hook called once per versioned router, before it is included in the app |
+| `webhook_routers` | `APIRouter \| list[APIRouter] \| None` | `None` | Router(s) containing webhook definitions annotated with `@api_version`; each version's schema shows only the webhooks active in that version |
+| `openapi_hook` | `Callable[[dict, VersionT], dict] \| None` | `None` | Hook applied to the generated OpenAPI schema for each version; receives `(schema, version)` and must return the modified schema |
 | `swagger_js_url` | `str \| None` | FastAPI CDN | Custom URL for the Swagger UI JS bundle |
 | `swagger_css_url` | `str \| None` | FastAPI CDN | Custom URL for the Swagger UI CSS |
 | `swagger_favicon_url` | `str \| None` | FastAPI favicon | Custom URL for the Swagger UI favicon |
@@ -221,6 +224,82 @@ RouterVersioner(
 
 The route decorator still uses `(major, minor)` tuples — only the URL and doc label change.
 
+### OpenAPI schema hook
+
+`openapi_hook` lets you modify the generated OpenAPI JSON for each version — useful for
+custom extensions, logos, version-specific metadata, or AWS API Gateway integration.
+Unlike overriding `app.openapi`, this hook is called inside the per-version generation
+pipeline, so it receives the correct filtered schema.
+
+```python
+def my_openapi_hook(schema: dict, version: tuple[int, int]) -> dict:
+    # Applied to every version
+    schema["info"]["x-logo"] = {"url": "https://example.com/logo.png"}
+
+    # Applied only to v1
+    if version == (1, 0):
+        schema["info"]["description"] += "\n\n**DEPRECATED:** Use v2."
+
+    return schema
+
+RouterVersioner(
+    app=app,
+    routers=router,
+    version_format=VersionFormat.SEMVER,
+    openapi_hook=my_openapi_hook,
+).versionize()
+```
+
+The hook receives `(schema: dict, version: VersionT)` and must return the (modified) dict.
+
+### OpenAPI Callbacks and Webhooks
+
+**Callbacks** (per-route) are propagated automatically — any `callbacks=[...]` parameter
+on a route is copied to every versioned copy of that route:
+
+```python
+callback_router = APIRouter()
+
+@callback_router.post("{$url}")
+def on_event(body: dict) -> None: ...
+
+@router.post("/items", callbacks=callback_router.routes)
+@api_version((1, 0))
+def create_item() -> dict: ...
+```
+
+**Webhooks** (`app.webhooks`) appear in the OpenAPI schema of every version by default.
+To version webhooks independently, use `webhook_routers` with the same `@api_version`
+decorator used on regular routes:
+
+```python
+webhook_router = APIRouter()
+
+@webhook_router.post("/order-created")
+@api_version((1, 0))
+def webhook_order_v1(body: OrderV1) -> None: ...
+
+@webhook_router.post("/order-created")
+@api_version((2, 0))       # replaces v1 definition (same path + method)
+def webhook_order_v2(body: OrderV2) -> None: ...
+
+@webhook_router.post("/payment-failed")
+@api_version((1, 0), remove_in=(2, 0))
+def webhook_payment_v1(body: dict) -> None: ...
+
+RouterVersioner(
+    app=app,
+    routers=router,
+    webhook_routers=webhook_router,
+    version_format=VersionFormat.SEMVER,
+).versionize()
+# /v1_0/openapi.json → webhooks: /order-created (V1), /payment-failed
+# /v2_0/openapi.json → webhooks: /order-created (V2)  ← /payment-failed removed
+```
+
+The same introduce / `remove_in` lifecycle applies. Webhook versions follow route versions:
+a new webhook version only appears once a route version creates that API prefix.
+
 ### Multiple routers
 
 Pass a list of routers to version routes that are split across modules:
@@ -292,6 +371,7 @@ Runnable examples are available in the [`examples/`](examples/) directory:
 | [`semver_app.py`](examples/semver_app.py) | Full SemVer lifecycle (introduce, deprecate, remove) |
 | [`calver_app.py`](examples/calver_app.py) | Same lifecycle with CalVer date strings |
 | [`semver_major_only_app.py`](examples/semver_major_only_app.py) | Custom prefix `/v1`, `/v2` via `prefix_format` |
+| [`webhook_versioning_app.py`](examples/webhook_versioning_app.py) | Per-version webhook definitions via `webhook_routers` |
 | [`multi_router_app.py`](examples/multi_router_app.py) | Multiple routers versioned together |
 | [`self_hosted_docs_app.py`](examples/self_hosted_docs_app.py) | Swagger UI and ReDoc from local static assets |
 
