@@ -311,7 +311,7 @@ requires-dist = [{ name = "fastapi", specifier = ">=0.120.0,!=0.137.0,!=0.137.1"
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "coverage", extras = ["toml"], specifier = ">=7.11.0" },
+    { name = "coverage", extras = ["toml"], specifier = ">=7.14.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "httpx2", specifier = ">=0.28.0" },
     { name = "inline-snapshot", specifier = ">=0.21.1" },
