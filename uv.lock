@@ -318,7 +318,7 @@ dev = [
     { name = "mypy", specifier = ">=1.17.0" },
     { name = "prek", specifier = ">=0.2.22" },
     { name = "pyrefly", specifier = ">=0.60.0" },
-    { name = "pytest", specifier = ">=9.0.0" },
+    { name = "pytest", specifier = ">=9.1.0" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
     { name = "pytest-dotenv", specifier = ">=0.5.2" },
     { name = "ruff", specifier = ">=0.14.0" },
