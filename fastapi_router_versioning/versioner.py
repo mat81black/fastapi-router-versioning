@@ -6,6 +6,7 @@ from enum import Enum
 from typing import Any, TypeAlias, TypeVar
 
 import fastapi.openapi.utils
+import fastapi.routing
 
 from fastapi import APIRouter, FastAPI
 from fastapi.openapi.docs import (
@@ -17,12 +18,9 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.routing import APIRoute, APIWebSocketRoute
 from starlette.requests import Request
 
-try:
-    from fastapi.routing import iter_route_contexts
-
-    FASTAPI_SUPPORTS_ROUTE_CONTEXTS = True
-except ImportError:  # pragma: no cover
-    FASTAPI_SUPPORTS_ROUTE_CONTEXTS = False  # pragma: no cover
+# iter_route_contexts was introduced in FastAPI 0.137.2. On older versions the
+# attribute does not exist and getattr returns None, activating the fallback path.
+_route_contexts_fn: Callable[..., Any] | None = getattr(fastapi.routing, "iter_route_contexts", None)
 
 
 def _iter_routes_flat(routes: list[Any]) -> Iterator[Any]:
@@ -30,11 +28,11 @@ def _iter_routes_flat(routes: list[Any]) -> Iterator[Any]:
     Flattens the route tree using iter_route_contexts (FastAPI >= 0.137.2),
     or yields the original flat list for older versions.
     """
-    if not FASTAPI_SUPPORTS_ROUTE_CONTEXTS:  # pragma: no cover
-        yield from routes  # pragma: no cover
-        return  # pragma: no cover
+    if _route_contexts_fn is None:
+        yield from routes
+        return
 
-    for route_ctx in iter_route_contexts(routes):
+    for route_ctx in _route_contexts_fn(routes):
         original = route_ctx.original_route
         if isinstance(original, APIRoute):
             # RouteContext merges path/tags/deps via __getattr__; use the context directly.
@@ -43,9 +41,19 @@ def _iter_routes_flat(routes: list[Any]) -> Iterator[Any]:
             yield original
 
 
+def _unwrap_route(route: Any) -> Any:
+    # RouteContext (FastAPI >= 0.137.2) wraps the original route.
+    # Attributes like response_model, status_code, operation_id live on the original.
+    return getattr(route, "original_route", route)
+
+
 CallableT = TypeVar("CallableT", bound=Callable[..., Any])
 
 VersionT: TypeAlias = tuple[int, int] | str
+
+_ATTR_API_VERSION = "_api_version"
+_ATTR_DEPRECATE_IN = "_deprecate_in_version"
+_ATTR_REMOVE_IN = "_remove_in_version"
 
 
 class VersionFormat(str, Enum):
@@ -86,13 +94,13 @@ def api_version(
         _validate_api_version_arg(remove_in, "remove_in")
 
     def decorator(func: CallableT) -> CallableT:
-        setattr(func, "_api_version", version)  # noqa: B010
+        setattr(func, _ATTR_API_VERSION, version)  # noqa: B010
 
         if deprecate_in is not None:
-            setattr(func, "_deprecate_in_version", deprecate_in)  # noqa: B010
+            setattr(func, _ATTR_DEPRECATE_IN, deprecate_in)  # noqa: B010
 
         if remove_in is not None:
-            setattr(func, "_remove_in_version", remove_in)  # noqa: B010
+            setattr(func, _ATTR_REMOVE_IN, remove_in)  # noqa: B010
 
         return func
 
@@ -114,6 +122,12 @@ class RouterVersioner:
         include_versions_route: bool = False,
         sort_routes: bool = False,
         callback: Callable[[APIRouter, VersionT, str], None] | None = None,
+        swagger_js_url: str | None = None,
+        swagger_css_url: str | None = None,
+        swagger_favicon_url: str | None = None,
+        redoc_js_url: str | None = None,
+        redoc_favicon_url: str | None = None,
+        redoc_with_google_fonts: bool = True,
     ):
         """
         Versionize your FastAPI application in-place, organizing routes based on their API version.
@@ -121,6 +135,10 @@ class RouterVersioner:
         :param app: The main FastAPI application instance.
         :param routers: A single APIRouter or a list of APIRouters containing the routes to version.
         :param version_format: Enforces the versioning strategy (SEMVER or CALVER).
+            For CALVER, version strings must be lexicographically sortable in the intended
+            order (e.g. ISO dates "2025-01-01", zero-padded numbers "v01", "v02").
+            Strings like "v1", "v10", "v2" will NOT sort correctly and cause routes to
+            appear in the wrong versions.
         :param prefix_format: Format used to build the route prefix.
         :param semantic_version_format: Format used to build the version in Swagger/ReDoc.
         :param default_version: Default version used if a route is not explicitly decorated.
@@ -130,6 +148,12 @@ class RouterVersioner:
         :param include_versions_route: If True, adds a 'GET /versions' endpoint returning info on all active API versions.
         :param sort_routes: If True, sorts all routes alphabetically by path.
         :param callback: Optional hook invoked every time a versioned APIRouter is created.
+        :param swagger_js_url: Custom URL for the Swagger UI JS bundle. Defaults to FastAPI's CDN URL.
+        :param swagger_css_url: Custom URL for the Swagger UI CSS. Defaults to FastAPI's CDN URL.
+        :param swagger_favicon_url: Custom URL for the Swagger UI favicon. Defaults to FastAPI's favicon.
+        :param redoc_js_url: Custom URL for the ReDoc JS bundle. Defaults to FastAPI's CDN URL.
+        :param redoc_favicon_url: Custom URL for the ReDoc favicon. Defaults to FastAPI's favicon.
+        :param redoc_with_google_fonts: If False, ReDoc will not load Google Fonts. Defaults to True.
         """
         self._app = app
         self._routers = [routers] if isinstance(routers, APIRouter) else routers
@@ -151,6 +175,12 @@ class RouterVersioner:
         self._include_versions_route = include_versions_route
         self._sort_routes = sort_routes
         self._callback = callback
+        self._swagger_js_url = swagger_js_url
+        self._swagger_css_url = swagger_css_url
+        self._swagger_favicon_url = swagger_favicon_url
+        self._redoc_js_url = redoc_js_url
+        self._redoc_favicon_url = redoc_favicon_url
+        self._redoc_with_google_fonts = redoc_with_google_fonts
 
         if default_version is None:
             self._default_version: VersionT = (1, 0) if version_format == VersionFormat.SEMVER else "1"
@@ -185,7 +215,9 @@ class RouterVersioner:
         return None
 
     def versionize(self) -> list[VersionT]:
-        version, routes_by_key = None, None
+        latest_version: VersionT | None = None
+        latest_routes: dict[tuple[str, str], Any] = {}
+
         routes_by_version = self._get_routes_by_version()
         versions = list(routes_by_version.keys())
 
@@ -201,22 +233,21 @@ class RouterVersioner:
 
             self._app.include_router(router=version_router)
 
-        if self._latest_prefix is not None and routes_by_key and version is not None:
+            latest_version = version
+            latest_routes = routes_by_key
+
+        if self._latest_prefix is not None and latest_version is not None:
             latest_router = self._build_version_router(
-                version=version, version_prefix=self._latest_prefix, routes_by_key=routes_by_key
+                version=latest_version, version_prefix=self._latest_prefix, routes_by_key=latest_routes
             )
             if self._callback:
-                self._callback(latest_router, version, self._latest_prefix)
+                self._callback(latest_router, latest_version, self._latest_prefix)
             self._app.include_router(router=latest_router)
 
         if self._include_versions_route:
             self._add_versions_route(versions=versions)
 
         return versions
-
-    def _build_api_url(self, version_prefix: str, path: str) -> str:
-        root_path = (self._app.root_path or "").rstrip("/")
-        return f"{root_path}{version_prefix}{path}"
 
     def _build_version_router(
         self,
@@ -227,7 +258,6 @@ class RouterVersioner:
         router = APIRouter(prefix=version_prefix, responses=self._app.router.responses)
 
         if self._sort_routes:
-            # Natural sort by path (Python dict insertion order is preserved)
             routes_by_key = dict(sorted(routes_by_key.items()))
 
         for route in routes_by_key.values():
@@ -237,42 +267,38 @@ class RouterVersioner:
 
         return router
 
-    def _get_routes_by_version(
-        self,
-    ) -> dict[VersionT, dict[tuple[str, str], Any]]:
+    def _get_routes_by_version(self) -> dict[VersionT, dict[tuple[str, str], Any]]:
         all_routes: list[Any] = []
         for router in self._routers:
             all_routes.extend(_iter_routes_flat(router.routes))
 
-        routes_by_start_version: dict[VersionT, list[Any]] = defaultdict(list)
+        routes_introduced: dict[VersionT, list[Any]] = defaultdict(list)
         for route in all_routes:
-            start_version = self._extract_version_attribute(route.endpoint, "_api_version", route.path)
+            start_version = self._extract_version_attribute(route.endpoint, _ATTR_API_VERSION, route.path)
             if start_version is None:
                 start_version = self._default_version
-            routes_by_start_version[start_version].append(route)
+            routes_introduced[start_version].append(route)
 
-        routes_by_end_version: dict[VersionT, list[Any]] = defaultdict(list)
+        routes_removed: dict[VersionT, list[Any]] = defaultdict(list)
         for route in all_routes:
-            end_version = self._extract_version_attribute(route.endpoint, "_remove_in_version", route.path)
+            end_version = self._extract_version_attribute(route.endpoint, _ATTR_REMOVE_IN, route.path)
             if end_version is not None:
-                routes_by_end_version[end_version].append(route)
+                routes_removed[end_version].append(route)
 
-        all_version_keys = set(routes_by_start_version.keys()) | set(routes_by_end_version.keys())
+        all_version_keys = set(routes_introduced.keys()) | set(routes_removed.keys())
         versions = sorted(all_version_keys)
         routes_by_version: dict[VersionT, dict[tuple[str, str], Any]] = {}
-        curr_version_routes_by_key: dict[tuple[str, str], Any] = {}
+        active_routes: dict[tuple[str, str], Any] = {}
 
         for version in versions:
-            for route in routes_by_start_version[version]:
-                route_keys = self._get_route_keys(route=route)
-                curr_version_routes_by_key.update(route_keys)
+            for route in routes_introduced[version]:
+                active_routes.update(self._get_route_keys(route=route))
 
-            for route in routes_by_end_version.get(version, []):
-                route_keys = self._get_route_keys(route=route)
-                for route_key in route_keys:
-                    curr_version_routes_by_key.pop(route_key, None)
+            for route in routes_removed.get(version, []):
+                for route_key in self._get_route_keys(route=route):
+                    active_routes.pop(route_key, None)
 
-            routes_by_version[version] = dict(curr_version_routes_by_key)
+            routes_by_version[version] = dict(active_routes)
 
         return routes_by_version
 
@@ -280,9 +306,7 @@ class RouterVersioner:
     def _get_route_keys(cls, route: Any) -> dict[tuple[str, str], Any]:
         path = route.path
         routes_by_key: dict[tuple[str, str], Any] = {}
-
-        # Unwrap the original route, bypassing the RouteContext proxy (FastAPI >= 0.137.2).
-        route_type = getattr(route, "original_route", route)
+        route_type = _unwrap_route(route)
 
         if isinstance(route_type, APIRoute):
             for method in route.methods:
@@ -295,84 +319,120 @@ class RouterVersioner:
     def _add_version_docs(self, router: APIRouter, version: VersionT, version_prefix: str) -> None:
         doc_version_str = self._format_string(self._semantic_version_format, version)
         title = f"{self._app.title} - v{doc_version_str}"
+        versioned_tags = self._collect_versioned_tags(router)
+        openapi_url = self._app.openapi_url
+
+        if self._include_version_openapi_route and openapi_url is not None:
+            self._add_openapi_route(router, title, doc_version_str, versioned_tags, openapi_url)
+
+        if self._include_version_docs and self._docs_url is not None and openapi_url is not None:
+            self._add_swagger_ui_routes(router, title, version_prefix, self._docs_url, openapi_url)
+
+        if self._include_version_docs and self._redoc_url is not None and openapi_url is not None:
+            self._add_redoc_route(router, title, version_prefix, self._redoc_url, openapi_url)
+
+    def _collect_versioned_tags(self, router: APIRouter) -> list[dict[str, Any]]:
+        if self._app.openapi_tags is None:
+            return []
         tags: set[str | Enum] = set()
-        versioned_tags: list[dict[str, Any]] = []
+        for route in router.routes:
+            if isinstance(route, APIRoute) and isinstance(route.tags, list):
+                tags.update(route.tags)
+        if not tags:
+            return []
+        return [tag for tag in self._app.openapi_tags if tag["name"] in tags]
 
-        if self._app.openapi_tags is not None:
-            for route in router.routes:
-                if isinstance(route, APIRoute) and isinstance(route.tags, list):
-                    tags.update(route.tags)
+    def _add_openapi_route(
+        self,
+        router: APIRouter,
+        title: str,
+        doc_version_str: str,
+        versioned_tags: list[dict[str, Any]],
+        openapi_url: str,
+    ) -> None:
+        @router.get(openapi_url, include_in_schema=False)
+        async def get_openapi(req: Request) -> Any:
+            schema = fastapi.openapi.utils.get_openapi(
+                title=title,
+                version=doc_version_str,
+                openapi_version=self._app.openapi_version,
+                summary=self._app.summary,
+                description=self._app.description,
+                routes=router.routes,
+                webhooks=self._app.webhooks.routes,
+                tags=versioned_tags,
+                servers=self._app.servers,
+                terms_of_service=self._app.terms_of_service,
+                contact=self._app.contact,
+                license_info=self._app.license_info,
+                separate_input_output_schemas=self._app.separate_input_output_schemas,
+                external_docs=self._app.openapi_external_docs,
+            )
 
-            if tags:
-                openapi_tags = self._app.openapi_tags or []
-                for openapi_tag in openapi_tags:
-                    if openapi_tag["name"] in tags:
-                        versioned_tags.append(openapi_tag)
+            root_path = req.scope.get("root_path", "").rstrip("/")
+            if root_path and getattr(self._app, "root_path_in_servers", True):
+                server_urls = {s.get("url") for s in schema.get("servers", [])}
+                if root_path not in server_urls:
+                    schema = dict(schema)
+                    schema["servers"] = [{"url": root_path}] + schema.get("servers", [])
 
-        # 1. Independent OpenAPI JSON Route
-        if self._include_version_openapi_route and self._app.openapi_url is not None:
+            return schema
 
-            @router.get(self._app.openapi_url, include_in_schema=False)
-            async def get_openapi(req: Request) -> Any:
-                schema = fastapi.openapi.utils.get_openapi(
-                    title=title,
-                    version=doc_version_str,
-                    openapi_version=self._app.openapi_version,
-                    summary=self._app.summary,
-                    description=self._app.description,
-                    terms_of_service=self._app.terms_of_service,
-                    contact=self._app.contact,
-                    license_info=self._app.license_info,
-                    routes=router.routes,
-                    webhooks=self._app.webhooks.routes,
-                    tags=versioned_tags,
-                    servers=self._app.servers,
-                    separate_input_output_schemas=self._app.separate_input_output_schemas,
-                )
+    def _add_swagger_ui_routes(
+        self, router: APIRouter, title: str, version_prefix: str, docs_url: str, openapi_url: str
+    ) -> None:
+        swagger_asset_kwargs: dict[str, Any] = {}
+        if self._swagger_js_url is not None:
+            swagger_asset_kwargs["swagger_js_url"] = self._swagger_js_url
+        if self._swagger_css_url is not None:
+            swagger_asset_kwargs["swagger_css_url"] = self._swagger_css_url
+        if self._swagger_favicon_url is not None:
+            swagger_asset_kwargs["swagger_favicon_url"] = self._swagger_favicon_url
 
-                root_path = req.scope.get("root_path", "").rstrip("/")
-                if root_path and getattr(self._app, "root_path_in_servers", True):
-                    server_urls = {s.get("url") for s in schema.get("servers", [])}
-                    if root_path not in server_urls:
-                        schema = dict(schema)
-                        schema["servers"] = [{"url": root_path}] + schema.get("servers", [])
-
-                return schema
-
-        # 2. Independent Swagger UI Route
-        if self._include_version_docs and self._docs_url is not None and self._app.openapi_url is not None:
-            versioned_openapi_url = self._build_api_url(version_prefix, self._app.openapi_url)
-            versioned_oauth2_redirect_url = (
-                self._build_api_url(version_prefix, self._app.swagger_ui_oauth2_redirect_url)
+        # root_path is resolved at request time (mirrors FastAPI's own /docs handler).
+        @router.get(docs_url, include_in_schema=False)
+        async def get_docs(request: Request) -> HTMLResponse:
+            root_path = request.scope.get("root_path", "").rstrip("/")
+            versioned_openapi_url = f"{root_path}{version_prefix}{openapi_url}"
+            oauth2_redirect_url = (
+                f"{root_path}{version_prefix}{self._app.swagger_ui_oauth2_redirect_url}"
                 if self._app.swagger_ui_oauth2_redirect_url
                 else None
             )
+            return get_swagger_ui_html(
+                openapi_url=versioned_openapi_url,
+                title=title,
+                oauth2_redirect_url=oauth2_redirect_url,
+                init_oauth=self._app.swagger_ui_init_oauth,
+                swagger_ui_parameters=self._app.swagger_ui_parameters,
+                **swagger_asset_kwargs,
+            )
 
-            @router.get(self._docs_url, include_in_schema=False)
-            async def get_docs(_request: Request) -> HTMLResponse:
-                return get_swagger_ui_html(
-                    openapi_url=versioned_openapi_url,
-                    title=title,
-                    oauth2_redirect_url=versioned_oauth2_redirect_url,
-                )
+        if self._app.swagger_ui_oauth2_redirect_url:
 
-            if self._app.swagger_ui_oauth2_redirect_url:
+            @router.get(self._app.swagger_ui_oauth2_redirect_url, include_in_schema=False)
+            async def get_oauth2_redirect(_request: Request) -> HTMLResponse:
+                return get_swagger_ui_oauth2_redirect_html()
 
-                @router.get(self._app.swagger_ui_oauth2_redirect_url, include_in_schema=False)
-                async def get_oauth2_redirect(_request: Request) -> HTMLResponse:
-                    return get_swagger_ui_oauth2_redirect_html()
+    def _add_redoc_route(
+        self, router: APIRouter, title: str, version_prefix: str, redoc_url: str, openapi_url: str
+    ) -> None:
+        redoc_asset_kwargs: dict[str, Any] = {"with_google_fonts": self._redoc_with_google_fonts}
+        if self._redoc_js_url is not None:
+            redoc_asset_kwargs["redoc_js_url"] = self._redoc_js_url
+        if self._redoc_favicon_url is not None:
+            redoc_asset_kwargs["redoc_favicon_url"] = self._redoc_favicon_url
 
-        # 3. Independent ReDoc Route
-        if self._include_version_docs and self._redoc_url is not None and self._app.openapi_url is not None:
-            versioned_openapi_url_redoc = self._build_api_url(version_prefix, self._app.openapi_url)
-
-            @router.get(self._redoc_url, include_in_schema=False)
-            async def get_redoc(_request: Request) -> HTMLResponse:
-                return get_redoc_html(openapi_url=versioned_openapi_url_redoc, title=title)
+        @router.get(redoc_url, include_in_schema=False)
+        async def get_redoc(request: Request) -> HTMLResponse:
+            root_path = request.scope.get("root_path", "").rstrip("/")
+            versioned_openapi_url = f"{root_path}{version_prefix}{openapi_url}"
+            return get_redoc_html(openapi_url=versioned_openapi_url, title=title, **redoc_asset_kwargs)
 
     def _add_versions_route(self, versions: list[VersionT]) -> None:
         @self._app.get("/versions", tags=["Versions"], response_class=JSONResponse)
-        def get_versions() -> dict[str, Any]:
+        def get_versions(request: Request) -> dict[str, Any]:
+            root_path = request.scope.get("root_path", "").rstrip("/")
             version_models: list[dict[str, Any]] = []
             for version in versions:
                 version_prefix = self._format_string(self._prefix_format, version)
@@ -381,31 +441,30 @@ class RouterVersioner:
                 version_model = {"version": doc_version_str}
 
                 if self._include_version_openapi_route and self._app.openapi_url is not None:
-                    version_model["openapi_url"] = self._build_api_url(version_prefix, self._app.openapi_url)
+                    version_model["openapi_url"] = f"{root_path}{version_prefix}{self._app.openapi_url}"
                 if self._include_version_docs and self._docs_url is not None:
-                    version_model["swagger_url"] = self._build_api_url(version_prefix, self._docs_url)
+                    version_model["swagger_url"] = f"{root_path}{version_prefix}{self._docs_url}"
                 if self._include_version_docs and self._redoc_url is not None:
-                    version_model["redoc_url"] = self._build_api_url(version_prefix, self._redoc_url)
+                    version_model["redoc_url"] = f"{root_path}{version_prefix}{self._redoc_url}"
 
                 version_models.append(version_model)
 
             return {"versions": version_models}
 
     def _add_route_to_router(self, route: Any, router: APIRouter, version: VersionT) -> None:
-        route_type = getattr(route, "original_route", route)
-        add_method: Callable[..., Any]
-
-        if isinstance(route_type, APIRoute):
-            add_method = router.add_api_route
-        elif isinstance(route_type, APIWebSocketRoute):
-            add_method = router.add_api_websocket_route
-        else:
-            raise TypeError(f"Unsupported route type: {type(route_type).__name__}")
-
         # Read attributes from the original route, not the RouteContext proxy. The proxy
         # (FastAPI >= 0.137.2) only merges path/tags/deps; other fields such as
         # response_model, status_code, and operation_id would be silently lost.
-        source_route = getattr(route, "original_route", route)
+        source_route = _unwrap_route(route)
+        add_method: Callable[..., Any]
+
+        if isinstance(source_route, APIRoute):
+            add_method = router.add_api_route
+        elif isinstance(source_route, APIWebSocketRoute):
+            add_method = router.add_api_websocket_route
+        else:
+            raise TypeError(f"Unsupported route type: {type(source_route).__name__}")
+
         valid_params = inspect.signature(add_method).parameters.keys()
         filtered_kwargs = {k: getattr(source_route, k) for k in valid_params if hasattr(source_route, k)}
         filtered_kwargs.setdefault("endpoint", source_route.endpoint)
@@ -414,8 +473,7 @@ class RouterVersioner:
             if hasattr(route, merged_attr) and merged_attr in valid_params:
                 filtered_kwargs[merged_attr] = getattr(route, merged_attr)
 
-        # Deprecation flag
-        deprecated_in_version = self._extract_version_attribute(route.endpoint, "_deprecate_in_version", route.path)
+        deprecated_in_version = self._extract_version_attribute(route.endpoint, _ATTR_DEPRECATE_IN, route.path)
         if deprecated_in_version is not None:
             if isinstance(version, tuple) and isinstance(deprecated_in_version, tuple):
                 if version >= deprecated_in_version:
