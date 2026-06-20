@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "fastapi-router-versioning"
 dynamic = ["version"]
-description = "Native, router-based API versioning for FastAPI with per-version docs and a declarative route lifecycle."
+description = "Native, router-based API versioning for FastAPI, featuring per-version docs and a declarative route lifecycle."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
