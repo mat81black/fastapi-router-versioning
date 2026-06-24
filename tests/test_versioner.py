@@ -812,6 +812,60 @@ def test_webhook_routers_calver() -> None:
     assert "/event" in schema.get("webhooks", {})
 
 
+def test_openapi_schema_is_cached() -> None:
+    """The schema is generated only once; subsequent requests use the cache."""
+    from unittest.mock import patch
+
+    import fastapi.openapi.utils as openapi_utils
+
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/data")
+    @api_version((1, 0))
+    def get_data() -> dict[str, str]: ...
+
+    RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER).versionize()
+    client = TestClient(app)
+
+    with patch.object(openapi_utils, "get_openapi", wraps=openapi_utils.get_openapi) as mock_fn:
+        client.get("/v1_0/openapi.json")
+        client.get("/v1_0/openapi.json")
+        assert mock_fn.call_count == 1
+
+
+def test_openapi_cache_invalidated_on_route_change() -> None:
+    """The cache is invalidated when _get_routes_version() changes after a new route is added."""
+    from unittest.mock import patch
+
+    import fastapi.openapi.utils as openapi_utils
+
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/data")
+    @api_version((1, 0))
+    def get_data() -> dict[str, str]: ...
+
+    captured_routers: dict[Any, APIRouter] = {}
+
+    def capture_callback(versioned_router: APIRouter, version: VersionT, prefix: str) -> None:
+        captured_routers[version] = versioned_router
+
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER, callback=capture_callback)
+    versioner.versionize()
+    client = TestClient(app)
+
+    with patch.object(openapi_utils, "get_openapi", wraps=openapi_utils.get_openapi) as mock_fn:
+        client.get("/v1_0/openapi.json")
+        assert mock_fn.call_count == 1
+
+        captured_routers[(1, 0)].add_api_route("/dynamic", lambda: {}, methods=["GET"])
+
+        client.get("/v1_0/openapi.json")
+        assert mock_fn.call_count == 2
+
+
 def test_iter_routes_flat_fallback_without_route_context_fn() -> None:
     """Covers the _route_contexts_fn=None fallback (legacy FastAPI < 0.137.2).
 

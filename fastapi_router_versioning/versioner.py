@@ -195,6 +195,8 @@ class RouterVersioner:
         self._redoc_js_url = redoc_js_url
         self._redoc_favicon_url = redoc_favicon_url
         self._redoc_with_google_fonts = redoc_with_google_fonts
+        self._openapi_schemas_cache: dict[VersionT, dict[str, Any]] = {}
+        self._openapi_routes_versions: dict[VersionT, int | None] = {}
 
         if default_version is None:
             self._default_version: VersionT = (1, 0) if version_format == VersionFormat.SEMVER else "1"
@@ -363,9 +365,8 @@ class RouterVersioner:
         if not webhooks_by_version:
             # webhook_routers not provided: fall back to global app.webhooks
             return list(self._app.webhooks.routes)
-        candidates: list[VersionT] = []
         if isinstance(version, tuple):
-            candidates = [v for v in webhooks_by_version if isinstance(v, tuple) and v <= version]
+            candidates: list[VersionT] = [v for v in webhooks_by_version if isinstance(v, tuple) and v <= version]
         else:
             candidates = [v for v in webhooks_by_version if isinstance(v, str) and v <= version]
         if not candidates:
@@ -424,32 +425,41 @@ class RouterVersioner:
     ) -> None:
         @router.get(openapi_url, include_in_schema=False)
         async def get_openapi(req: Request) -> Any:
-            schema = fastapi.openapi.utils.get_openapi(
-                title=title,
-                version=doc_version_str,
-                openapi_version=self._app.openapi_version,
-                summary=self._app.summary,
-                description=self._app.description,
-                routes=router.routes,
-                webhooks=webhooks,
-                tags=versioned_tags,
-                servers=self._app.servers,
-                terms_of_service=self._app.terms_of_service,
-                contact=self._app.contact,
-                license_info=self._app.license_info,
-                separate_input_output_schemas=self._app.separate_input_output_schemas,
-                external_docs=self._app.openapi_external_docs,
-            )
+            _get_routes_version = getattr(router, "_get_routes_version", None)
+            current_routes_version = _get_routes_version() if _get_routes_version else None
 
+            cached = self._openapi_schemas_cache.get(version)
+            if cached is None or self._openapi_routes_versions.get(version) != current_routes_version:
+                schema = fastapi.openapi.utils.get_openapi(
+                    title=title,
+                    version=doc_version_str,
+                    openapi_version=self._app.openapi_version,
+                    summary=self._app.summary,
+                    description=self._app.description,
+                    routes=router.routes,
+                    webhooks=webhooks,
+                    tags=versioned_tags,
+                    servers=self._app.servers,
+                    terms_of_service=self._app.terms_of_service,
+                    contact=self._app.contact,
+                    license_info=self._app.license_info,
+                    separate_input_output_schemas=self._app.separate_input_output_schemas,
+                    external_docs=self._app.openapi_external_docs,
+                )
+                if self._openapi_hook is not None:
+                    schema = self._openapi_hook(schema, version)
+                self._openapi_schemas_cache[version] = schema
+                self._openapi_routes_versions[version] = current_routes_version
+            else:
+                schema = self._openapi_schemas_cache[version]
+
+            # root_path is per-request: shallow copy to avoid polluting the cache
             root_path = req.scope.get("root_path", "").rstrip("/")
             if root_path and getattr(self._app, "root_path_in_servers", True):
                 server_urls = {s.get("url") for s in schema.get("servers", [])}
                 if root_path not in server_urls:
                     schema = dict(schema)
                     schema["servers"] = [{"url": root_path}] + schema.get("servers", [])
-
-            if self._openapi_hook is not None:
-                schema = self._openapi_hook(schema, version)
 
             return schema
 
