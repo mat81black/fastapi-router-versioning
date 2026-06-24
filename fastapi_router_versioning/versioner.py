@@ -37,8 +37,15 @@ def _iter_routes_flat(routes: list[Any]) -> Iterator[Any]:
         if isinstance(original, APIRoute):
             # RouteContext merges path/tags/deps via __getattr__; use the context directly.
             yield route_ctx
+        elif isinstance(original, APIWebSocketRoute):
+            # For WebSockets, RouteContext.__getattr__ does NOT merge parent prefixes into path.
+            # _route_context._EffectiveRouteContext holds the fully resolved starlette_route
+            # (with all include_router prefixes applied). Fall back to original for direct routes.
+            rc = getattr(route_ctx, "_route_context", None)
+            starlette_route = getattr(rc, "starlette_route", None) if rc is not None else None
+            yield starlette_route if starlette_route is not None else original
         else:
-            yield original
+            yield original  # pragma: no cover
 
 
 def _unwrap_route(route: Any) -> Any:
@@ -425,6 +432,9 @@ class RouterVersioner:
     ) -> None:
         @router.get(openapi_url, include_in_schema=False)
         async def get_openapi(req: Request) -> Any:
+            # _get_routes_version() is the same internal FastAPI uses for its own schema cache;
+            # if unavailable (private API removed), current_routes_version stays None and the
+            # cache persists indefinitely — degraded but correct.
             _get_routes_version = getattr(router, "_get_routes_version", None)
             current_routes_version = _get_routes_version() if _get_routes_version else None
 
