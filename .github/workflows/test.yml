@@ -17,7 +17,34 @@ env:
   UV_NO_SYNC: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    timeout-minutes: 5
+    outputs:
+      src: ${{ steps.filter.outputs.src }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        with:
+          filters: |
+            src:
+              - .github/workflows/test.yml
+              - fastapi_router_versioning/**
+              - scripts/**
+              - tests/**
+              - .python-version
+              - pyproject.toml
+              - uv.lock
+
   test:
+    needs:
+      - changes
+    if: needs.changes.outputs.src == 'true' || github.ref == 'refs/heads/main'
     timeout-minutes: 15
     permissions:
       contents: read
@@ -134,6 +161,7 @@ jobs:
   check:
     if: always()
     needs:
+      - test
       - coverage-combine
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -143,3 +171,4 @@ jobs:
         uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
         with:
           jobs: ${{ toJSON(needs) }}
+          allowed-skips: test,coverage-combine
