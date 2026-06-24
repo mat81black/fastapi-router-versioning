@@ -836,8 +836,9 @@ def test_webhook_routers_calver() -> None:
 
 def test_openapi_schema_is_cached() -> None:
     """The schema is generated only once; subsequent requests use the cache."""
-    import fastapi.openapi.utils as openapi_utils
     from unittest.mock import patch
+
+    import fastapi.openapi.utils as openapi_utils
 
     app = FastAPI()
     router = APIRouter()
@@ -857,14 +858,14 @@ def test_openapi_schema_is_cached() -> None:
 
 def test_openapi_cache_invalidated_on_route_change() -> None:
     """The cache is invalidated when _get_routes_version() changes after a new route is added."""
-    import fastapi.openapi.utils as openapi_utils
     from unittest.mock import patch
+
+    import fastapi.openapi.utils as openapi_utils
 
     import fastapi_router_versioning.versioner as versioner_mod
 
     if versioner_mod._route_contexts_fn is None:
         pytest.skip("_get_routes_version not available (FastAPI < 0.137.2)")  # pragma: no cover
-
 
     app = FastAPI()
     router = APIRouter()
