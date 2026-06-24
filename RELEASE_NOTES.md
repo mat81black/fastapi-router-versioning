@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+## 0.1.1 (2026-06-24)
+
 ### Features
 
 * ✨ Add per-version OpenAPI schema caching: schemas are generated once and cached, significantly reducing overhead on repeated requests.
