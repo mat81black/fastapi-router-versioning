@@ -15,6 +15,7 @@
 ### Internal
 
 * 👷 Add `prepare-release.yml` workflow and `scripts/prepare_release.py` for automated version bumping and release PR creation.
+* 👷 Add `changes` job to `test.yml` and `test-redistribute.yml` to skip CI when no relevant files are modified.
 
 ## 0.1.0 (2025-06-24)
 
