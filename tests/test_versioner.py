@@ -129,6 +129,28 @@ def test_websockets_versioning() -> None:
         assert data == "Hello Versioned WS"
 
 
+def test_websocket_nested_router_prefix_is_preserved() -> None:
+    """WebSocket inside a sub-router with a prefix must carry the full merged path when versionized."""
+    app = FastAPI()
+    ws_router = APIRouter()
+
+    @ws_router.websocket("/ws")
+    @api_version((1, 0))
+    async def ws_endpoint(websocket: WebSocket) -> None:
+        await websocket.accept()
+        await websocket.send_text("ok")
+        await websocket.close()
+
+    parent_router = APIRouter(prefix="/chat")
+    parent_router.include_router(ws_router)
+
+    RouterVersioner(app=app, routers=parent_router, version_format=VersionFormat.SEMVER).versionize()
+
+    client = TestClient(app)
+    with client.websocket_connect("/v1_0/chat/ws") as ws:
+        assert ws.receive_text() == "ok"
+
+
 def test_unsupported_route_type_raises_error() -> None:
     """A Starlette Route (not APIRoute/APIWebSocketRoute) should raise TypeError."""
     app = FastAPI()
@@ -810,6 +832,65 @@ def test_webhook_routers_calver() -> None:
     client = TestClient(app)
     schema = client.get("/2025-01/openapi.json").json()
     assert "/event" in schema.get("webhooks", {})
+
+
+def test_openapi_schema_is_cached() -> None:
+    """The schema is generated only once; subsequent requests use the cache."""
+    from unittest.mock import patch
+
+    import fastapi.openapi.utils as openapi_utils
+
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/data")
+    @api_version((1, 0))
+    def get_data() -> dict[str, str]: ...
+
+    RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER).versionize()
+    client = TestClient(app)
+
+    with patch.object(openapi_utils, "get_openapi", wraps=openapi_utils.get_openapi) as mock_fn:
+        client.get("/v1_0/openapi.json")
+        client.get("/v1_0/openapi.json")
+        assert mock_fn.call_count == 1
+
+
+def test_openapi_cache_invalidated_on_route_change() -> None:
+    """The cache is invalidated when _get_routes_version() changes after a new route is added."""
+    from unittest.mock import patch
+
+    import fastapi.openapi.utils as openapi_utils
+
+    import fastapi_router_versioning.versioner as versioner_mod
+
+    if versioner_mod._route_contexts_fn is None:
+        pytest.skip("_get_routes_version not available (FastAPI < 0.137.2)")  # pragma: no cover
+
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/data")
+    @api_version((1, 0))
+    def get_data() -> dict[str, str]: ...
+
+    captured_routers: dict[Any, APIRouter] = {}
+
+    def capture_callback(versioned_router: APIRouter, version: VersionT, prefix: str) -> None:
+        captured_routers[version] = versioned_router
+
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER, callback=capture_callback)
+    versioner.versionize()
+    client = TestClient(app)
+
+    with patch.object(openapi_utils, "get_openapi", wraps=openapi_utils.get_openapi) as mock_fn:
+        client.get("/v1_0/openapi.json")
+        assert mock_fn.call_count == 1
+
+        captured_routers[(1, 0)].add_api_route("/dynamic", lambda: {}, methods=["GET"])
+
+        client.get("/v1_0/openapi.json")
+        assert mock_fn.call_count == 2
 
 
 def test_iter_routes_flat_fallback_without_route_context_fn() -> None:
