@@ -6,32 +6,32 @@
 
 ### Features
 
-* ✨ Add per-version OpenAPI schema caching: schemas are generated once and cached, significantly reducing overhead on repeated requests.
-* ✨ Track which routes belong to each version to invalidate the cache automatically when the route set changes.
+* ✨ Add per-version OpenAPI schema caching: schemas are generated once and cached, reducing overhead on repeated requests. PR [#5](https://github.com/mat81black/fastapi-router-versioning/pull/5) by [@mat81black](https://github.com/mat81black).
+* ✨ Track which routes belong to each version to invalidate the cache automatically when the route set changes. PR [#5](https://github.com/mat81black/fastapi-router-versioning/pull/5) by [@mat81black](https://github.com/mat81black).
 
 ### Fixes
 
-* 🐛 Fix WebSocket routes not being handled correctly in `versioned_routers` when the cache was active.
-* 🐛 Improve OpenAPI schema cache resilience: cache is now safely bypassed on unexpected errors instead of raising.
+* 🐛 Fix WebSocket routes not being handled correctly in `versioned_routers` when the cache was active. PR [#5](https://github.com/mat81black/fastapi-router-versioning/pull/5) by [@mat81black](https://github.com/mat81black).
+* 🐛 Improve OpenAPI schema cache resilience: cache is now safely bypassed on unexpected errors instead of raising. PR [#5](https://github.com/mat81black/fastapi-router-versioning/pull/5) by [@mat81black](https://github.com/mat81black).
 
 ### Internal
 
-* 👷 Add `prepare-release.yml` workflow and `scripts/prepare_release.py` for automated version bumping and release PR creation.
-* 👷 Add `changes` job to `test.yml` and `test-redistribute.yml` to skip CI when no relevant files are modified.
+* 👷 Add `prepare-release.yml` workflow and `scripts/prepare_release.py` for automated version bumping and release PR creation. PR [#6](https://github.com/mat81black/fastapi-router-versioning/pull/6) by [@mat81black](https://github.com/mat81black).
+* 👷 Add `changes` job to `test.yml` and `test-redistribute.yml` to skip CI when no relevant files are modified. PR [#10](https://github.com/mat81black/fastapi-router-versioning/pull/10) by [@mat81black](https://github.com/mat81black).
 
 ## 0.1.0 (2025-06-24)
 
 🚀 First official public release of **fastapi-router-versioning**.
 
-This library provides an elegant, native, router-based solution for **FastAPI API versioning**. It allows you to manage the entire lifecycle of your endpoints declaratively with a single decorator, automatically generating isolated schemas and documentation for every version without altering your core application structure.
+Router-based API versioning for FastAPI, with declarative route lifecycle, per-version OpenAPI schemas, and isolated documentation — without altering the core application structure.
 
 ### Features
 
-* ✨ SemVer & CalVer support: route versioning using `(major, minor)` tuples or lexicographically sortable arbitrary strings (like ISO dates).
+* ✨ SemVer & CalVer support: route versioning using `(major, minor)` tuples or lexicographically sortable arbitrary strings.
 * ✨ Declarative route lifecycle: introduce, deprecate (`deprecate_in`), and remove (`remove_in`) routes across versions.
 * ✨ Per-version documentation: isolated Swagger UI, ReDoc, and `openapi.json` for each active version.
-* ✨ Advanced OpenAPI customization via `openapi_hook`: manipulate the filtered JSON schema per version (vendor extensions, custom logos, API Gateway integrations).
-* ✨ Independent webhook versioning via `webhook_routers`, with native propagation of per-route OpenAPI Callbacks and WebSockets.
-* ✨ Latest-version alias: expose the highest active version under a stable configurable prefix (e.g. `/latest`).
-* ✨ Enterprise & air-gapped ready: full control over Swagger/ReDoc static assets and option to disable Google Fonts.
-* ✨ Reverse proxy aware: dynamically resolves and injects the ASGI `root_path` at request time.
+* ✨ OpenAPI schema hook: modify the filtered schema per version via `openapi_hook`.
+* ✨ Independent webhook versioning via `webhook_routers`, with propagation of per-route OpenAPI Callbacks.
+* ✨ Latest-version alias: expose the highest active version under a stable configurable prefix.
+* ✨ Self-hosted docs: full control over Swagger/ReDoc static assets and option to disable Google Fonts.
+* ✨ Reverse proxy aware: resolves and injects the ASGI `root_path` at request time.

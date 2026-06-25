@@ -1,12 +1,12 @@
-# FastAPI Router Versioning (Native API Versioning)
+# FastAPI Router Versioning
 
 [![PyPI](https://img.shields.io/pypi/v/fastapi-router-versioning)](https://pypi.org/project/fastapi-router-versioning/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/fastapi-router-versioning)](https://pypi.org/project/fastapi-router-versioning/)
 
-The native, router-based solution for **API versioning in FastAPI**.
+Router-based API versioning for FastAPI.
 
-If you want to implement **FastAPI API versioning**, you can simply annotate your routes with `@api_version`, call `.versionize()`, and get isolated URL prefixes, per-version Swagger UI, and a full route lifecycle — all without touching your existing application structure.
+FastAPI has no built-in versioning mechanism. The common workaround — duplicating routers or managing prefixes manually — breaks down quickly as the number of versions grows. This package adds declarative versioning directly on routes, with isolated URL prefixes, per-version Swagger UI, and a full route lifecycle, without touching the existing application structure.
 
 ---
 
@@ -65,7 +65,7 @@ RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER).ve
 # Mounts: GET /v1_0/items   GET /v2_0/items
 ```
 
-Each version also gets its own Swagger UI at `/v1_0/docs`, `/v2_0/docs`, and so on.
+Each version gets its own Swagger UI at `/v1_0/docs`, `/v2_0/docs`, and so on.
 
 ---
 
@@ -89,9 +89,9 @@ RouterVersioner(app=app, routers=router, version_format=VersionFormat.CALVER).ve
 # Mounts: GET /2025-01-01/items
 ```
 
-Any string is a valid CalVer token: `"2025-01-01"`, `"v3"`, `"stable"`, etc.
+Valid CalVer tokens: `"2025-01-01"`, `"v3"`, `"stable"`, etc.
 
-> **CalVer sorting:** versions are sorted lexicographically, so strings must be comparable in the intended order. ISO dates (`"2025-01-01"`) and zero-padded numbers (`"v01"`, `"v02"`) work correctly. Strings like `"v1"`, `"v10"`, `"v2"` will **not** sort correctly and will cause routes to appear in the wrong versions.
+**CalVer sorting:** versions are sorted lexicographically, so tokens must be comparable in the intended order. ISO dates (`"2025-01-01"`) and zero-padded numbers (`"v01"`, `"v02"`) work correctly. Non-padded strings like `"v1"`, `"v10"`, `"v2"` will not sort correctly and will cause routes to appear in the wrong versions.
 
 ---
 
@@ -153,8 +153,8 @@ Call `.versionize()` after constructing the object. It returns the list of activ
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `version` | `tuple[int, int] \| str` | yes | Version when this route is introduced |
-| `deprecate_in` | same \| `None` | no | Version when this route is marked deprecated in the docs |
+| `version` | `tuple[int, int] \| str` | yes | First version in which this route is active |
+| `deprecate_in` | same \| `None` | no | Version in which this route is marked deprecated in the docs |
 | `remove_in` | same \| `None` | no | Version from which this route is removed entirely |
 
 All three parameters must match the `version_format` configured on `RouterVersioner`
@@ -250,7 +250,7 @@ RouterVersioner(
 ).versionize()
 ```
 
-The hook receives `(schema: dict, version: VersionT)` and must return the (modified) dict.
+The hook receives `(schema: dict, version: VersionT)` and must return the modified dict.
 
 ### OpenAPI Callbacks and Webhooks
 
@@ -297,12 +297,11 @@ RouterVersioner(
 # /v2_0/openapi.json → webhooks: /order-created (V2)  ← /payment-failed removed
 ```
 
-The same introduce / `remove_in` lifecycle applies. Webhook versions follow route versions:
-a new webhook version only appears once a route version creates that API prefix.
+The same `remove_in` lifecycle applies. A new webhook version only appears once a route version creates that API prefix.
 
 ### Multiple routers
 
-Pass a list of routers to version routes that are split across modules:
+Pass a list of routers to version routes split across modules:
 
 ```python
 RouterVersioner(
@@ -316,7 +315,7 @@ All routers are versioned together under the same prefix tree.
 
 ### Self-hosted docs (air-gapped environments)
 
-By default, Swagger UI and ReDoc assets are loaded from the FastAPI CDN. In air-gapped or corporate environments, point them at assets you host yourself:
+By default, Swagger UI and ReDoc assets are loaded from the FastAPI CDN. In air-gapped or corporate environments, point them at locally hosted assets:
 
 ```python
 RouterVersioner(
@@ -332,7 +331,7 @@ RouterVersioner(
 ).versionize()
 ```
 
-See [`examples/download_static_assets.py`](examples/download_static_assets.py) for a ready-made script that downloads all required assets in one step, and [`examples/self_hosted_docs_app.py`](examples/self_hosted_docs_app.py) for a complete working example.
+See [`examples/download_static_assets.py`](examples/download_static_assets.py) for a script that downloads all required assets in one step, and [`examples/self_hosted_docs_app.py`](examples/self_hosted_docs_app.py) for a complete working example.
 
 ### Reverse proxy / sub-app mounting
 
