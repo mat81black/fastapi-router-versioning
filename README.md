@@ -18,6 +18,7 @@ FastAPI has no built-in versioning mechanism. The common workaround — duplicat
 - **Latest alias** — serve the newest version under a stable `/latest` prefix
 - **Self-hosted docs** — point Swagger UI and ReDoc at your own assets for air-gapped environments
 - **Reverse proxy aware** — doc URLs include the ASGI `root_path` at request time, so sub-app mounting works out of the box
+- **Configurable validation error code** — return `400` (or any code) instead of `422` for request validation errors, with the OpenAPI schema updated automatically
 - **Broad compatibility** — works with nested routers, WebSockets, `Depends`, and OpenAPI Callbacks
 
 ---
@@ -140,6 +141,8 @@ Routes without `@api_version` fall back to `default_version` (default: `(1, 0)` 
 | `redoc_js_url` | `str \| None` | FastAPI CDN | Custom URL for the ReDoc JS bundle |
 | `redoc_favicon_url` | `str \| None` | FastAPI favicon | Custom URL for the ReDoc favicon |
 | `redoc_with_google_fonts` | `bool` | `True` | If `False`, ReDoc will not load Google Fonts |
+| `validation_error_code` | `int` | `422` | HTTP status code returned for request validation errors; also replaces the `422` entry in the OpenAPI schema |
+| `handle_validation_exceptions` | `bool` | `True` | If `False`, only the schema is updated — register your own `RequestValidationError` handler to control the response body |
 
 Call `.versionize()` after constructing the object. It returns the list of active versions.
 
@@ -333,6 +336,41 @@ RouterVersioner(
 
 See [`examples/download_static_assets.py`](examples/download_static_assets.py) for a script that downloads all required assets in one step, and [`examples/self_hosted_docs_app.py`](examples/self_hosted_docs_app.py) for a complete working example.
 
+### Validation error code
+
+By default FastAPI returns `422 Unprocessable Entity` for request validation errors.
+Use `validation_error_code` to change the code returned both at runtime and in the OpenAPI schema:
+
+```python
+RouterVersioner(
+    app=app,
+    routers=router,
+    version_format=VersionFormat.SEMVER,
+    validation_error_code=400,
+).versionize()
+# Validation errors now return 400; the schema shows 400 instead of 422
+```
+
+To keep full control over the response body, set `handle_validation_exceptions=False` and register your own handler:
+
+```python
+from fastapi import Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(RequestValidationError)
+async def my_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"errors": exc.errors()})
+
+RouterVersioner(
+    app=app,
+    routers=router,
+    version_format=VersionFormat.SEMVER,
+    validation_error_code=400,
+    handle_validation_exceptions=False,  # schema updated; handler is yours
+).versionize()
+```
+
 ### Reverse proxy / sub-app mounting
 
 When the app runs behind a reverse proxy or is mounted as a sub-application, the ASGI `root_path` is included in all per-version doc URLs automatically — no extra configuration needed:
@@ -373,6 +411,7 @@ Runnable examples are available in the [`examples/`](examples/) directory:
 | [`webhook_versioning_app.py`](examples/webhook_versioning_app.py) | Per-version webhook definitions via `webhook_routers` |
 | [`multi_router_app.py`](examples/multi_router_app.py) | Multiple routers versioned together |
 | [`self_hosted_docs_app.py`](examples/self_hosted_docs_app.py) | Swagger UI and ReDoc from local static assets |
+| [`validation_error_code_app.py`](examples/validation_error_code_app.py) | Return `400` instead of `422` for validation errors, with automatic and custom handlers |
 
 ---
 

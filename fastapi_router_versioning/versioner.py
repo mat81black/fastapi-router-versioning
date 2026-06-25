@@ -9,6 +9,8 @@ import fastapi.openapi.utils
 import fastapi.routing
 
 from fastapi import APIRouter, FastAPI
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.docs import (
     get_redoc_html,
     get_swagger_ui_html,
@@ -137,6 +139,8 @@ class RouterVersioner:
         redoc_js_url: str | None = None,
         redoc_favicon_url: str | None = None,
         redoc_with_google_fonts: bool = True,
+        validation_error_code: int = 422,
+        handle_validation_exceptions: bool = True,
     ):
         """
         Versionize your FastAPI application in-place, organizing routes based on their API version.
@@ -171,6 +175,10 @@ class RouterVersioner:
         :param redoc_js_url: Custom URL for the ReDoc JS bundle. Defaults to FastAPI's CDN URL.
         :param redoc_favicon_url: Custom URL for the ReDoc favicon. Defaults to FastAPI's favicon.
         :param redoc_with_google_fonts: If False, ReDoc will not load Google Fonts. Defaults to True.
+        :param validation_error_code: HTTP status code returned for request validation errors. Defaults to 422.
+        :param handle_validation_exceptions: If True (default), registers an exception handler that returns
+            validation errors with the given ``validation_error_code``. Set to False to register your own
+            handler while still having the OpenAPI schema reflect the custom code.
         """
         self._app = app
         self._routers = [routers] if isinstance(routers, APIRouter) else routers
@@ -213,6 +221,12 @@ class RouterVersioner:
 
         self._docs_url = getattr(app, "docs_url", "/docs")
         self._redoc_url = getattr(app, "redoc_url", "/redoc")
+
+        self._validation_error_code = validation_error_code
+        self._handle_validation_exceptions = handle_validation_exceptions
+
+        if self._validation_error_code != 422 and self._handle_validation_exceptions:
+            self._register_validation_exception_handler()
 
     def _validate_version_type(self, version: Any, route_path: str) -> None:
         if self._version_format == VersionFormat.SEMVER:
@@ -456,6 +470,9 @@ class RouterVersioner:
                     separate_input_output_schemas=self._app.separate_input_output_schemas,
                     external_docs=self._app.openapi_external_docs,
                 )
+
+                self._patch_validation_error_openapi(schema)
+
                 if self._openapi_hook is not None:
                     schema = self._openapi_hook(schema, version)
                 self._openapi_schemas_cache[version] = schema
@@ -582,3 +599,57 @@ class RouterVersioner:
             filtered_kwargs.pop("name")
 
         add_method(**filtered_kwargs)
+
+    def _register_validation_exception_handler(self) -> None:
+        if getattr(self._app.state, "_validation_overridden", False):
+            return
+
+        @self._app.exception_handler(RequestValidationError)
+        async def custom_validation_exception_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
+            return JSONResponse(
+                status_code=self._validation_error_code,
+                content={"detail": jsonable_encoder(exc.errors())},
+            )
+
+        self._app.state._validation_overridden = True
+
+    def _patch_validation_error_openapi(self, schema: dict[str, Any]) -> None:
+        if self._validation_error_code == 422:
+            return
+
+        target_code = str(self._validation_error_code)
+        http_methods = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
+
+        for _path, path_item in schema.get("paths", {}).items():
+            for _method, operation in path_item.items():
+                if _method not in http_methods:
+                    continue
+
+                responses = operation.get("responses", {})
+                if "422" in responses:
+                    response_422 = responses["422"]
+                    content_422 = response_422.get("content", {}).get("application/json", {})
+                    schema_422 = content_422.get("schema", {})
+                    ref = schema_422.get("$ref", "")
+
+                    if ref.endswith("HTTPValidationError"):
+                        if target_code in responses:
+                            existing_response = responses[target_code]
+                            existing_content = existing_response.setdefault("content", {}).setdefault(
+                                "application/json", {}
+                            )
+                            existing_schema = existing_content.setdefault("schema", {})
+
+                            if "anyOf" in existing_schema:
+                                existing_schema["anyOf"].append(schema_422)
+                            elif existing_schema:
+                                existing_content["schema"] = {"anyOf": [existing_schema, schema_422]}
+                            else:
+                                existing_content["schema"] = schema_422
+
+                            old_desc = existing_response.get("description", "Error")
+                            existing_response["description"] = f"{old_desc} / Validation Error"
+
+                            del responses["422"]
+                        else:
+                            responses[target_code] = responses.pop("422")
