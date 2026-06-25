@@ -2,6 +2,14 @@
 
 ## Latest Changes
 
+### Internal
+
+* 👷 Add Python 3.14 classifier to `pyproject.toml` to align with the versions already covered by CI.
+
+### Docs
+
+* 📝 Update README and `pyproject.toml` to clarify package description and improve documentation consistency. PR [#12](https://github.com/mat81black/fastapi-router-versioning/pull/12) by [@mat81black](https://github.com/mat81black).
+
 ## 0.1.1 (2026-06-24)
 
 ### Features
