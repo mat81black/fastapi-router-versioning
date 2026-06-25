@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+## 0.1.2 (2026-06-25)
+
 ### Internal
 
 * 👷 Add Python 3.14 classifier to `pyproject.toml` to align with the versions already covered by CI.
