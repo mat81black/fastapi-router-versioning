@@ -2,6 +2,15 @@
 
 ## Latest Changes
 
+### Features
+
+* ✨ Add `validation_error_code` parameter to `RouterVersioner` to override the HTTP status code returned for request validation errors (default: `422`). The OpenAPI schema is updated automatically to reflect the custom code. PR [#16](https://github.com/mat81black/fastapi-router-versioning/pull/16) by [@mat81black](https://github.com/mat81black).
+* ✨ Add `handle_validation_exceptions` parameter to `RouterVersioner`: when `False`, only the OpenAPI schema is updated, leaving the exception handler to the user. PR [#16](https://github.com/mat81black/fastapi-router-versioning/pull/16) by [@mat81black](https://github.com/mat81black).
+
+### Fixes
+
+* 🐛 Fix Python 3.14 classifier not actually added to `pyproject.toml` in 0.1.2. PR [#15](https://github.com/mat81black/fastapi-router-versioning/pull/15) by [@mat81black](https://github.com/mat81black).
+
 ## 0.1.2 (2026-06-25)
 
 ### Internal

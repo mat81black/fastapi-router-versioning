@@ -305,7 +305,7 @@ def test_openapi_hook_is_applied_to_schema() -> None:
     @api_version((2, 0))
     def test_route_v2() -> dict[str, str]: ...
 
-    def my_hook(schema: dict, version: tuple[int, int]) -> dict:
+    def my_hook(schema: dict[str, Any], version: tuple[int, int]) -> dict[str, Any]:
         schema["info"]["x-custom"] = f"v{version[0]}.{version[1]}"
         return schema
 
@@ -891,6 +891,211 @@ def test_openapi_cache_invalidated_on_route_change() -> None:
 
         client.get("/v1_0/openapi.json")
         assert mock_fn.call_count == 2
+
+
+def test_validation_error_code_changes_response_status() -> None:
+    """validation_error_code=400 makes validation errors return 400 instead of 422."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items(count: int) -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=router, version_format=VersionFormat.SEMVER, validation_error_code=400
+    ).versionize()
+
+    response = TestClient(app).get("/v1_0/items?count=not_a_number")
+    assert response.status_code == 400
+    assert "detail" in response.json()
+
+
+def test_validation_error_code_default_returns_422() -> None:
+    """Default validation_error_code=422 preserves standard FastAPI behavior."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items(count: int) -> dict[str, str]: ...
+
+    RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER).versionize()
+
+    response = TestClient(app).get("/v1_0/items?count=not_a_number")
+    assert response.status_code == 422
+
+
+def test_validation_error_code_reflected_in_openapi_schema() -> None:
+    """The OpenAPI schema replaces the 422 response entry with the custom validation_error_code."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items(count: int) -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=router, version_format=VersionFormat.SEMVER, validation_error_code=400
+    ).versionize()
+
+    schema = TestClient(app).get("/v1_0/openapi.json").json()
+    operation = schema["paths"]["/v1_0/items"]["get"]
+    assert "400" in operation["responses"]
+    assert "422" not in operation["responses"]
+
+
+def test_validation_error_handle_exceptions_false_patches_schema_only() -> None:
+    """handle_validation_exceptions=False patches the schema but does not register the handler,
+    so the actual runtime response is still 422 (FastAPI's default)."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items(count: int) -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app,
+        routers=router,
+        version_format=VersionFormat.SEMVER,
+        validation_error_code=400,
+        handle_validation_exceptions=False,
+    ).versionize()
+
+    client = TestClient(app)
+    schema = client.get("/v1_0/openapi.json").json()
+    operation = schema["paths"]["/v1_0/items"]["get"]
+    assert "400" in operation["responses"]
+    assert "422" not in operation["responses"]
+
+    # No handler registered: FastAPI's default 422 is still returned at runtime.
+    assert client.get("/v1_0/items?count=not_a_number").status_code == 422
+
+
+def test_validation_error_code_merges_with_existing_response() -> None:
+    """When a route already declares a response at the target code, the validation error
+    schema is merged in and the description is extended."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.post("/items", responses={400: {"description": "Custom bad request"}})
+    @api_version((1, 0))
+    def create_item(count: int) -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=router, version_format=VersionFormat.SEMVER, validation_error_code=400
+    ).versionize()
+
+    schema = TestClient(app).get("/v1_0/openapi.json").json()
+    operation = schema["paths"]["/v1_0/items"]["post"]
+    assert "400" in operation["responses"]
+    assert "422" not in operation["responses"]
+    assert "Validation Error" in operation["responses"]["400"]["description"]
+
+
+def test_validation_error_code_merges_anyof_into_existing_schema() -> None:
+    """When the target response already has a non-empty schema (no anyOf), both schemas
+    are wrapped in anyOf (covers the elif branch in _patch_validation_error_openapi)."""
+    _error_schema = {"content": {"application/json": {"schema": {"properties": {"msg": {"type": "string"}}}}}}
+
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.post("/items", responses={400: _error_schema})
+    @api_version((1, 0))
+    def create_item(count: int) -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=router, version_format=VersionFormat.SEMVER, validation_error_code=400
+    ).versionize()
+
+    schema = TestClient(app).get("/v1_0/openapi.json").json()
+    response_400 = schema["paths"]["/v1_0/items"]["post"]["responses"]["400"]
+    inner = response_400["content"]["application/json"]["schema"]
+    assert "anyOf" in inner
+    assert len(inner["anyOf"]) == 2
+
+
+def test_validation_error_code_appends_to_existing_anyof_schema() -> None:
+    """When the target response already has an anyOf schema, the validation error schema
+    is appended to the existing list (covers the if-anyOf branch in _patch_validation_error_openapi)."""
+    app = FastAPI()
+    router = APIRouter()
+
+    existing_anyof = {"anyOf": [{"type": "string"}, {"type": "integer"}]}
+
+    @router.post(
+        "/items",
+        responses={400: {"content": {"application/json": {"schema": existing_anyof}}}},
+    )
+    @api_version((1, 0))
+    def create_item(count: int) -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=router, version_format=VersionFormat.SEMVER, validation_error_code=400
+    ).versionize()
+
+    schema = TestClient(app).get("/v1_0/openapi.json").json()
+    response_400 = schema["paths"]["/v1_0/items"]["post"]["responses"]["400"]
+    inner = response_400["content"]["application/json"]["schema"]
+    assert "anyOf" in inner
+    assert len(inner["anyOf"]) == 3  # original 2 + HTTPValidationError
+
+
+def test_validation_error_handler_registered_once_for_multiple_versioners() -> None:
+    """Two RouterVersioners sharing the same app register the validation handler only once."""
+    app = FastAPI()
+    router1 = APIRouter()
+    router2 = APIRouter()
+
+    @router1.get("/a")
+    @api_version((1, 0))
+    def route_a(count: int) -> dict[str, str]: ...
+
+    @router2.get("/b")
+    @api_version((2, 0))
+    def route_b(count: int) -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=router1, version_format=VersionFormat.SEMVER, validation_error_code=400
+    ).versionize()
+    RouterVersioner(
+        app=app, routers=router2, version_format=VersionFormat.SEMVER, validation_error_code=400
+    ).versionize()
+
+    client = TestClient(app)
+    assert client.get("/v1_0/a?count=bad").status_code == 400
+    assert client.get("/v2_0/b?count=bad").status_code == 400
+    assert getattr(app.state, "_validation_overridden", False) is True
+
+
+def test_patch_validation_error_openapi_skips_non_method_keys() -> None:
+    """Non-HTTP-method keys in path items (e.g. 'parameters') are skipped without error."""
+    app = FastAPI()
+    router = APIRouter()
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER, validation_error_code=400)
+    schema: dict[str, Any] = {
+        "paths": {
+            "/items": {
+                "parameters": [{"name": "q", "in": "query", "schema": {"type": "string"}}],
+                "get": {
+                    "responses": {
+                        "422": {
+                            "content": {
+                                "application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}
+                            }
+                        }
+                    }
+                },
+            }
+        }
+    }
+    versioner._patch_validation_error_openapi(schema)
+    responses = schema["paths"]["/items"]["get"]["responses"]
+    assert "400" in responses
+    assert "422" not in responses
+    assert "parameters" in schema["paths"]["/items"]  # non-method key untouched
 
 
 def test_iter_routes_flat_fallback_without_route_context_fn() -> None:
