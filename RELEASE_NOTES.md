@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+## 0.2.0 (2026-06-26)
+
 ### Features
 
 * ✨ Add `validation_error_code` parameter to `RouterVersioner` to override the HTTP status code returned for request validation errors (default: `422`). The OpenAPI schema is updated automatically to reflect the custom code. PR [#16](https://github.com/mat81black/fastapi-router-versioning/pull/16) by [@mat81black](https://github.com/mat81black).
