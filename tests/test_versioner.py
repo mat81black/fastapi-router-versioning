@@ -1078,6 +1078,38 @@ def test_validation_error_handler_registered_once_for_multiple_versioners() -> N
     assert getattr(app.state, "_validation_overridden", False) is True
 
 
+def test_patch_validation_error_openapi_skips_non_method_keys() -> None:
+    """Non-HTTP-method keys in path items (e.g. 'parameters') are skipped without error."""
+    app = FastAPI()
+    router = APIRouter()
+    versioner = RouterVersioner(
+        app=app, routers=router, version_format=VersionFormat.SEMVER, validation_error_code=400
+    )
+    schema: dict[str, Any] = {
+        "paths": {
+            "/items": {
+                "parameters": [{"name": "q", "in": "query", "schema": {"type": "string"}}],
+                "get": {
+                    "responses": {
+                        "422": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/HTTPValidationError"}
+                                }
+                            }
+                        }
+                    }
+                },
+            }
+        }
+    }
+    versioner._patch_validation_error_openapi(schema)
+    responses = schema["paths"]["/items"]["get"]["responses"]
+    assert "400" in responses
+    assert "422" not in responses
+    assert "parameters" in schema["paths"]["/items"]  # non-method key untouched
+
+
 def test_iter_routes_flat_fallback_without_route_context_fn() -> None:
     """Covers the _route_contexts_fn=None fallback (legacy FastAPI < 0.137.2).
 
