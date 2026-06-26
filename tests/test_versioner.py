@@ -976,17 +976,12 @@ def test_validation_error_handle_exceptions_false_patches_schema_only() -> None:
 def test_validation_error_code_merges_with_existing_response() -> None:
     """When a route already declares a response at the target code, the validation error
     schema is merged in and the description is extended."""
-    from pydantic import BaseModel
-
     app = FastAPI()
     router = APIRouter()
 
-    class Item(BaseModel):
-        value: int
-
     @router.post("/items", responses={400: {"description": "Custom bad request"}})
     @api_version((1, 0))
-    def create_item(item: Item) -> dict[str, str]: ...
+    def create_item(count: int) -> dict[str, str]: ...
 
     RouterVersioner(
         app=app, routers=router, version_format=VersionFormat.SEMVER, validation_error_code=400
@@ -1002,15 +997,12 @@ def test_validation_error_code_merges_with_existing_response() -> None:
 def test_validation_error_code_merges_anyof_into_existing_schema() -> None:
     """When the target response already has a non-empty schema (no anyOf), both schemas
     are wrapped in anyOf (covers the elif branch in _patch_validation_error_openapi)."""
-    from pydantic import BaseModel
-
-    class ErrorModel(BaseModel):
-        msg: str
+    _error_schema = {"content": {"application/json": {"schema": {"properties": {"msg": {"type": "string"}}}}}}
 
     app = FastAPI()
     router = APIRouter()
 
-    @router.post("/items", responses={400: {"model": ErrorModel}})
+    @router.post("/items", responses={400: _error_schema})
     @api_version((1, 0))
     def create_item(count: int) -> dict[str, str]: ...
 
