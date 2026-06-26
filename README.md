@@ -411,7 +411,8 @@ Runnable examples are available in the [`examples/`](examples/) directory:
 | [`webhook_versioning_app.py`](examples/webhook_versioning_app.py) | Per-version webhook definitions via `webhook_routers` |
 | [`multi_router_app.py`](examples/multi_router_app.py) | Multiple routers versioned together |
 | [`self_hosted_docs_app.py`](examples/self_hosted_docs_app.py) | Swagger UI and ReDoc from local static assets |
-| [`validation_error_code_app.py`](examples/validation_error_code_app.py) | Return `400` instead of `422` for validation errors, with automatic and custom handlers |
+| [`validation_error_code_app.py`](examples/validation_error_code_app.py) | Return `400` instead of `422` for validation errors (automatic handler via `RouterVersioner`) |
+| [`validation_error_code_custom_handler_app.py`](examples/validation_error_code_custom_handler_app.py) | Same, but with `handle_validation_exceptions=False` and a user-defined exception handler |
 
 ---
 
