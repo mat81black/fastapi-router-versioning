@@ -12,9 +12,8 @@ Then open http://127.0.0.1:8007/v1_0/docs and try ``POST /v1_0/items`` with body
 the server (not a Swagger client-side message).
 """
 
-from pydantic import BaseModel
-
 from fastapi import APIRouter, FastAPI
+from pydantic import BaseModel
 
 from fastapi_router_versioning import RouterVersioner, VersionFormat, api_version
 
@@ -28,7 +27,7 @@ app = FastAPI(
     title="Validation Error Code — Automatic Handler",
     description=(
         "Validation errors return **400 Bad Request** instead of 422.\n\n"
-        "Try `POST /v1_0/items` with body `{\"name\": \"widget\", \"quantity\": \"not-a-number\"}` "
+        'Try `POST /v1_0/items` with body `{"name": "widget", "quantity": "not-a-number"}` '
         "to see the 400 response from the server."
     ),
 )

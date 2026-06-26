@@ -1074,9 +1074,7 @@ def test_patch_validation_error_openapi_skips_non_method_keys() -> None:
     """Non-HTTP-method keys in path items (e.g. 'parameters') are skipped without error."""
     app = FastAPI()
     router = APIRouter()
-    versioner = RouterVersioner(
-        app=app, routers=router, version_format=VersionFormat.SEMVER, validation_error_code=400
-    )
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER, validation_error_code=400)
     schema: dict[str, Any] = {
         "paths": {
             "/items": {
@@ -1085,9 +1083,7 @@ def test_patch_validation_error_openapi_skips_non_method_keys() -> None:
                     "responses": {
                         "422": {
                             "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/HTTPValidationError"}
-                                }
+                                "application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}
                             }
                         }
                     }

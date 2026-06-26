@@ -12,11 +12,10 @@ Then open http://127.0.0.1:8008/v1_0/docs and try ``POST /v1_0/orders`` with bod
 with field-level error messages.
 """
 
-from pydantic import BaseModel
-
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from fastapi_router_versioning import RouterVersioner, VersionFormat, api_version
 
@@ -30,7 +29,7 @@ app = FastAPI(
     title="Validation Error Code — Custom Handler",
     description=(
         "Validation errors return **400 Bad Request** with a custom response body.\n\n"
-        "Try `POST /v1_0/orders` with body `{\"name\": \"widget\", \"quantity\": \"not-a-number\"}` "
+        'Try `POST /v1_0/orders` with body `{"name": "widget", "quantity": "not-a-number"}` '
         "to see the custom handler response."
     ),
 )
