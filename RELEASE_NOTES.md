@@ -2,6 +2,10 @@
 
 ## Latest Changes
 
+### Fixes
+
+* 🐛 Fix `api_version` signature to enforce `deprecate_in` and `remove_in` as keyword-only arguments, aligning the implementation with the documented signature. PR [#18](https://github.com/mat81black/fastapi-router-versioning/pull/18) by [@mat81black](https://github.com/mat81black).
+
 ## 0.2.0 (2026-06-26)
 
 ### Features
