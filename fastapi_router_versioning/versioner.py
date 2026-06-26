@@ -85,6 +85,7 @@ def _validate_api_version_arg(value: Any, param_name: str) -> None:
 
 def api_version(
     version: VersionT,
+    *,
     deprecate_in: VersionT | None = None,
     remove_in: VersionT | None = None,
 ) -> Callable[[CallableT], CallableT]:
