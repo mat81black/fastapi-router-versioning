@@ -1309,7 +1309,7 @@ def test_iter_routes_flat_fallback_without_route_context_fn() -> None:
     original_fn = versioner_module._route_contexts_fn
     try:
         versioner_module._route_contexts_fn = None
-        result = list(versioner_module._iter_routes_flat(router.routes))
+        result = list(versioner_module.RouterVersioner._iter_routes_flat(router.routes))
         assert result == list(router.routes)
     finally:
         versioner_module._route_contexts_fn = original_fn
