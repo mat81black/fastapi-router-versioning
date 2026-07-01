@@ -11,6 +11,10 @@
 
 * 👷 Add a regression test for `RouterVersioner` under a real `app.mount()` sub-application, and `examples/mounted_subapps_app.py` demonstrating the same scenario. PR [#22](https://github.com/mat81black/fastapi-router-versioning/pull/22) by [@mat81black](https://github.com/mat81black).
 
+### Refactors
+
+* ♻️ Reorder RouterVersioner methods to match their call graph. PR [#23](https://github.com/mat81black/fastapi-router-versioning/pull/23) by [@mat81black](https://github.com/mat81black).
+
 ## 0.2.1 (2026-06-26)
 
 ### Fixes
