@@ -25,9 +25,8 @@ RouterVersioner attached to the same app.
 routes at the exact same path.
 """
 
-from pydantic import BaseModel
-
 from fastapi import APIRouter, FastAPI
+from pydantic import BaseModel
 
 from fastapi_router_versioning import RouterVersioner, VersionFormat, api_version
 

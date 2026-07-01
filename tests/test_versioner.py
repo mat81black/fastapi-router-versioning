@@ -1199,9 +1199,7 @@ def test_duplicate_latest_prefix_across_versioners_raises() -> None:
     @api_version("2025-01-01")
     def route_b() -> dict[str, str]: ...
 
-    RouterVersioner(
-        app=app, routers=router1, version_format=VersionFormat.SEMVER, latest_prefix="/latest"
-    ).versionize()
+    RouterVersioner(app=app, routers=router1, version_format=VersionFormat.SEMVER, latest_prefix="/latest").versionize()
 
     with pytest.raises(RuntimeError, match="already used by another RouterVersioner"):
         RouterVersioner(
