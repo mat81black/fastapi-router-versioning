@@ -8,6 +8,7 @@ versioned together under a single prefix tree.
 """
 
 from fastapi import APIRouter, FastAPI
+from pydantic import BaseModel
 
 from fastapi_router_versioning import RouterVersioner, VersionFormat, api_version
 
@@ -18,6 +19,11 @@ app = FastAPI(
 
 users_router = APIRouter(prefix="/users", tags=["Users"])
 products_router = APIRouter(prefix="/products", tags=["Products"])
+
+
+class CreateProductRequest(BaseModel):
+    name: str
+    quantity: int
 
 
 @users_router.get("/")
@@ -42,6 +48,14 @@ def list_products() -> dict[str, list[str]]:
 @api_version((2, 0))
 def search_products() -> dict[str, list[str]]:
     return {"results": []}
+
+
+# POST /products with an invalid "quantity" (e.g. "not-a-number") returns FastAPI's
+# default 422 validation error.
+@products_router.post("/")
+@api_version((1, 0))
+def create_product(body: CreateProductRequest) -> dict[str, str]:
+    return {"name": body.name, "quantity": str(body.quantity)}
 
 
 versioner = RouterVersioner(

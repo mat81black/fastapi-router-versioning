@@ -1098,6 +1098,54 @@ def test_patch_validation_error_openapi_skips_non_method_keys() -> None:
     assert "parameters" in schema["paths"]["/items"]  # non-method key untouched
 
 
+def test_root_openapi_reflects_validation_error_code() -> None:
+    """The app's own /openapi.json (not versioned) also reflects validation_error_code."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items(count: int) -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=router, version_format=VersionFormat.SEMVER, validation_error_code=400
+    ).versionize()
+
+    client = TestClient(app)
+    root_schema = client.get("/openapi.json").json()
+    operation = root_schema["paths"]["/v1_0/items"]["get"]
+    assert "400" in operation["responses"]
+    assert "422" not in operation["responses"]
+    assert client.get("/v1_0/items?count=bad").status_code == 400
+
+
+def test_root_openapi_reflects_effective_code_for_default_versioner() -> None:
+    """A RouterVersioner left at the default 422 still shows the real app-wide code in the
+    root schema, when another RouterVersioner on the same app registered the actual handler."""
+    app = FastAPI()
+    router1 = APIRouter()
+    router2 = APIRouter()
+
+    @router1.get("/a")
+    @api_version((1, 0))
+    def route_a(count: int) -> dict[str, str]: ...
+
+    @router2.get("/b")
+    @api_version((2, 0))
+    def route_b(count: int) -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=router1, version_format=VersionFormat.SEMVER, validation_error_code=400
+    ).versionize()
+    RouterVersioner(app=app, routers=router2, version_format=VersionFormat.SEMVER).versionize()
+
+    client = TestClient(app)
+    root_schema = client.get("/openapi.json").json()
+    assert "400" in root_schema["paths"]["/v2_0/b"]["get"]["responses"]
+    assert "422" not in root_schema["paths"]["/v2_0/b"]["get"]["responses"]
+    assert client.get("/v2_0/b?count=bad").status_code == 400
+
+
 def test_versioned_schema_reflects_effective_code_for_default_versioner() -> None:
     """A RouterVersioner left at the default 422 still shows the real app-wide code in its
     own versioned schema when another RouterVersioner on the same app registered the actual

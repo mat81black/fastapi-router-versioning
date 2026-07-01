@@ -1,4 +1,5 @@
 from fastapi import APIRouter, FastAPI
+from pydantic import BaseModel
 
 from fastapi_router_versioning import RouterVersioner, VersionFormat, api_version
 
@@ -10,6 +11,11 @@ app = FastAPI(
 # --- Regular routes ---
 
 router = APIRouter()
+
+
+class CreateItemRequest(BaseModel):
+    name: str
+    quantity: int
 
 
 @router.post("/orders")
@@ -28,6 +34,14 @@ def create_order_v2() -> dict[str, str]:
 @api_version((1, 0))
 def get_items() -> dict[str, object]:
     return {"items": ["a", "b"]}
+
+
+# POST /items with an invalid "quantity" (e.g. "not-a-number") returns FastAPI's
+# default 422 validation error.
+@router.post("/items")
+@api_version((1, 0))
+def create_item(body: CreateItemRequest) -> dict[str, str]:
+    return {"name": body.name, "quantity": str(body.quantity)}
 
 
 # --- Webhook definitions ---

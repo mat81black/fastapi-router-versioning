@@ -371,6 +371,10 @@ RouterVersioner(
 ).versionize()
 ```
 
+The app's own root `/docs`, `/redoc`, and `/openapi.json` (not versioned) also reflect
+`validation_error_code` — RouterVersioner patches `app.openapi()` itself, so nothing needs to
+be disabled to get consistent schemas everywhere.
+
 **Multiple `RouterVersioner` instances sharing one app** (e.g. one per module in a modular
 monolith) must all use the same `validation_error_code` when `handle_validation_exceptions=True`
 — since FastAPI's exception handler is app-wide, not per-router, a mismatch raises

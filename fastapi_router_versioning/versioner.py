@@ -228,6 +228,7 @@ class RouterVersioner:
 
         if self._validation_error_code != 422 and self._handle_validation_exceptions:
             self._register_validation_exception_handler()
+            self._patch_root_openapi()
 
     def _validate_version_type(self, version: Any, route_path: str) -> None:
         if self._version_format == VersionFormat.SEMVER:
@@ -638,6 +639,21 @@ class RouterVersioner:
             )
 
         self._app.state._validation_effective_code = self._validation_error_code
+
+    def _patch_root_openapi(self) -> None:
+        if getattr(self._app.state, "_root_openapi_patched", False):
+            return
+
+        original_openapi = self._app.openapi
+
+        def custom_openapi() -> dict[str, Any]:
+            schema = original_openapi()
+            self._patch_validation_error_openapi(schema)
+            self._app.openapi_schema = schema
+            return schema
+
+        self._app.openapi = custom_openapi  # type: ignore[method-assign] # ty:ignore[invalid-assignment]
+        self._app.state._root_openapi_patched = True
 
     def _get_schema_validation_code(self) -> int:
         if not self._handle_validation_exceptions:
