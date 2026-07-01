@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+## 0.2.2 (2026-07-01)
+
 ### Fixes
 
 * 🐛 Fix root OpenAPI schema not reflecting validation_error_code. PR [#21](https://github.com/mat81black/fastapi-router-versioning/pull/21) by [@mat81black](https://github.com/mat81black).
