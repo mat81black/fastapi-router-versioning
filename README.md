@@ -371,6 +371,14 @@ RouterVersioner(
 ).versionize()
 ```
 
+**Multiple `RouterVersioner` instances sharing one app** (e.g. one per module in a modular
+monolith) must all use the same `validation_error_code` when `handle_validation_exceptions=True`
+— since FastAPI's exception handler is app-wide, not per-router, a mismatch raises
+`RuntimeError` at construction time instead of silently picking whichever was registered
+first. Each instance must also use a distinct `prefix_format`/`latest_prefix`, otherwise their
+docs/openapi routes would collide at the same path — this also raises `RuntimeError`. See
+[`examples/modular_monolith_two_versioners_app.py`](examples/modular_monolith_two_versioners_app.py).
+
 ### Reverse proxy / sub-app mounting
 
 When the app runs behind a reverse proxy or is mounted as a sub-application, the ASGI `root_path` is included in all per-version doc URLs automatically — no extra configuration needed:
@@ -413,6 +421,7 @@ Runnable examples are available in the [`examples/`](examples/) directory:
 | [`self_hosted_docs_app.py`](examples/self_hosted_docs_app.py) | Swagger UI and ReDoc from local static assets |
 | [`validation_error_code_app.py`](examples/validation_error_code_app.py) | Return `400` instead of `422` for validation errors (automatic handler via `RouterVersioner`) |
 | [`validation_error_code_custom_handler_app.py`](examples/validation_error_code_custom_handler_app.py) | Same, but with `handle_validation_exceptions=False` and a user-defined exception handler |
+| [`modular_monolith_two_versioners_app.py`](examples/modular_monolith_two_versioners_app.py) | Two independent `RouterVersioner` instances (SemVer + CalVer) on one app, sharing the same `validation_error_code` |
 
 ---
 

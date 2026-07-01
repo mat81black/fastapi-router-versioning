@@ -1067,7 +1067,7 @@ def test_validation_error_handler_registered_once_for_multiple_versioners() -> N
     client = TestClient(app)
     assert client.get("/v1_0/a?count=bad").status_code == 400
     assert client.get("/v2_0/b?count=bad").status_code == 400
-    assert getattr(app.state, "_validation_overridden", False) is True
+    assert getattr(app.state, "_validation_effective_code", None) == 400
 
 
 def test_patch_validation_error_openapi_skips_non_method_keys() -> None:
@@ -1096,6 +1096,115 @@ def test_patch_validation_error_openapi_skips_non_method_keys() -> None:
     assert "400" in responses
     assert "422" not in responses
     assert "parameters" in schema["paths"]["/items"]  # non-method key untouched
+
+
+def test_versioned_schema_reflects_effective_code_for_default_versioner() -> None:
+    """A RouterVersioner left at the default 422 still shows the real app-wide code in its
+    own versioned schema when another RouterVersioner on the same app registered the actual
+    handler."""
+    app = FastAPI()
+    router1 = APIRouter()
+    router2 = APIRouter()
+
+    @router1.get("/a")
+    @api_version((1, 0))
+    def route_a(count: int) -> dict[str, str]: ...
+
+    @router2.get("/b")
+    @api_version((2, 0))
+    def route_b(count: int) -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=router1, version_format=VersionFormat.SEMVER, validation_error_code=400
+    ).versionize()
+    RouterVersioner(app=app, routers=router2, version_format=VersionFormat.SEMVER).versionize()
+
+    client = TestClient(app)
+    schema = client.get("/v2_0/openapi.json").json()
+    assert "400" in schema["paths"]["/v2_0/b"]["get"]["responses"]
+    assert "422" not in schema["paths"]["/v2_0/b"]["get"]["responses"]
+    assert client.get("/v2_0/b?count=bad").status_code == 400
+
+
+def test_conflicting_validation_error_codes_raise() -> None:
+    """Two RouterVersioners with different explicit validation_error_code and
+    handle_validation_exceptions=True must fail fast instead of silently ignoring the second."""
+    app = FastAPI()
+    router1 = APIRouter()
+    router2 = APIRouter()
+
+    RouterVersioner(app=app, routers=router1, version_format=VersionFormat.SEMVER, validation_error_code=400)
+
+    with pytest.raises(RuntimeError, match="conflicts with the requested"):
+        RouterVersioner(app=app, routers=router2, version_format=VersionFormat.SEMVER, validation_error_code=409)
+
+
+def test_handle_validation_exceptions_false_ignores_other_versioner_code() -> None:
+    """A versioner with handle_validation_exceptions=False always shows its own requested
+    code in its schema, regardless of what other versioners on the same app registered."""
+    app = FastAPI()
+    router1 = APIRouter()
+    router2 = APIRouter()
+
+    @router2.get("/items")
+    @api_version((1, 0))
+    def get_items(count: int) -> dict[str, str]: ...
+
+    RouterVersioner(app=app, routers=router1, version_format=VersionFormat.SEMVER, validation_error_code=400)
+    RouterVersioner(
+        app=app,
+        routers=router2,
+        version_format=VersionFormat.SEMVER,
+        validation_error_code=409,
+        handle_validation_exceptions=False,
+    ).versionize()
+
+    client = TestClient(app)
+    schema = client.get("/v1_0/openapi.json").json()
+    assert "409" in schema["paths"]["/v1_0/items"]["get"]["responses"]
+
+
+def test_duplicate_version_prefix_across_versioners_raises() -> None:
+    """Two RouterVersioners producing the same version prefix on the same app must fail fast
+    instead of silently shadowing each other's docs/openapi routes."""
+    app = FastAPI()
+    router1 = APIRouter()
+    router2 = APIRouter()
+
+    @router1.get("/a")
+    @api_version((1, 0))
+    def route_a() -> dict[str, str]: ...
+
+    @router2.get("/b")
+    @api_version((1, 0))
+    def route_b() -> dict[str, str]: ...
+
+    RouterVersioner(app=app, routers=router1, version_format=VersionFormat.SEMVER).versionize()
+
+    with pytest.raises(RuntimeError, match="already used by another RouterVersioner"):
+        RouterVersioner(app=app, routers=router2, version_format=VersionFormat.SEMVER).versionize()
+
+
+def test_duplicate_latest_prefix_across_versioners_raises() -> None:
+    """Two RouterVersioners sharing the same latest_prefix on the same app must fail fast."""
+    app = FastAPI()
+    router1 = APIRouter()
+    router2 = APIRouter()
+
+    @router1.get("/a")
+    @api_version((1, 0))
+    def route_a() -> dict[str, str]: ...
+
+    @router2.get("/b")
+    @api_version("2025-01-01")
+    def route_b() -> dict[str, str]: ...
+
+    RouterVersioner(app=app, routers=router1, version_format=VersionFormat.SEMVER, latest_prefix="/latest").versionize()
+
+    with pytest.raises(RuntimeError, match="already used by another RouterVersioner"):
+        RouterVersioner(
+            app=app, routers=router2, version_format=VersionFormat.CALVER, latest_prefix="/latest"
+        ).versionize()
 
 
 def test_iter_routes_flat_fallback_without_route_context_fn() -> None:

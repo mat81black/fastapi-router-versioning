@@ -263,6 +263,7 @@ class RouterVersioner:
 
         for version, routes_by_key in routes_by_version.items():
             version_prefix = self._format_string(self._prefix_format, version)
+            self._claim_prefix(version_prefix)
             active_webhooks = self._resolve_webhooks_for_version(version, webhooks_by_version)
 
             version_router = self._build_version_router(
@@ -279,6 +280,7 @@ class RouterVersioner:
             latest_webhooks = active_webhooks
 
         if self._latest_prefix is not None and latest_version is not None:
+            self._claim_prefix(self._latest_prefix)
             latest_router = self._build_version_router(
                 version=latest_version,
                 version_prefix=self._latest_prefix,
@@ -293,6 +295,21 @@ class RouterVersioner:
             self._add_versions_route(versions=versions)
 
         return versions
+
+    def _claim_prefix(self, prefix: str) -> None:
+        claimed: set[str] | None = getattr(self._app.state, "_router_versioner_claimed_prefixes", None)
+        if claimed is None:
+            claimed = set()
+            self._app.state._router_versioner_claimed_prefixes = claimed
+
+        if prefix in claimed:
+            raise RuntimeError(
+                f"Prefix '{prefix}' is already used by another RouterVersioner attached to this app. "
+                "Two RouterVersioner instances sharing the same app must use distinct "
+                "prefix_format/latest_prefix values, otherwise their docs/openapi routes silently "
+                "shadow each other."
+            )
+        claimed.add(prefix)
 
     def _build_version_router(
         self,
@@ -602,8 +619,16 @@ class RouterVersioner:
         add_method(**filtered_kwargs)
 
     def _register_validation_exception_handler(self) -> None:
-        if getattr(self._app.state, "_validation_overridden", False):
-            return
+        existing_code = getattr(self._app.state, "_validation_effective_code", None)
+        if existing_code is not None:
+            if existing_code != self._validation_error_code:
+                raise RuntimeError(
+                    f"A validation exception handler is already registered on this app with status "
+                    f"code {existing_code}, which conflicts with the requested {self._validation_error_code}. "
+                    "All RouterVersioner instances with handle_validation_exceptions=True sharing the "
+                    "same app must use the same validation_error_code."
+                )
+            return  # same code already registered: idempotent
 
         @self._app.exception_handler(RequestValidationError)
         async def custom_validation_exception_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -612,13 +637,19 @@ class RouterVersioner:
                 content={"detail": jsonable_encoder(exc.errors())},
             )
 
-        self._app.state._validation_overridden = True
+        self._app.state._validation_effective_code = self._validation_error_code
+
+    def _get_schema_validation_code(self) -> int:
+        if not self._handle_validation_exceptions:
+            return self._validation_error_code
+        return getattr(self._app.state, "_validation_effective_code", self._validation_error_code)
 
     def _patch_validation_error_openapi(self, schema: dict[str, Any]) -> None:
-        if self._validation_error_code == 422:
+        target = self._get_schema_validation_code()
+        if target == 422:
             return
 
-        target_code = str(self._validation_error_code)
+        target_code = str(target)
         http_methods = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
 
         for _path, path_item in schema.get("paths", {}).items():
