@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi import APIRouter, FastAPI
+from pydantic import BaseModel
 
 from fastapi_router_versioning import RouterVersioner, VersionFormat, VersionT, api_version
 
@@ -10,6 +11,11 @@ app = FastAPI(
 )
 
 router = APIRouter()
+
+
+class CreateItemRequest(BaseModel):
+    name: str
+    quantity: int
 
 
 @router.get("/items")
@@ -28,6 +34,14 @@ def get_items_v2() -> dict[str, object]:
 @api_version((1, 0), deprecate_in=(2, 0))
 def get_users() -> dict[str, object]:
     return {"users": ["alice", "bob"]}
+
+
+# POST /items with an invalid "quantity" (e.g. "not-a-number") returns FastAPI's
+# default 422 validation error.
+@router.post("/items")
+@api_version((1, 0))
+def create_item(body: CreateItemRequest) -> dict[str, str]:
+    return {"name": body.name, "quantity": str(body.quantity)}
 
 
 def my_openapi_hook(schema: dict[str, Any], version: VersionT) -> dict[str, Any]:

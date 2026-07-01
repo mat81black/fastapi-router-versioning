@@ -18,6 +18,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, FastAPI
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from fastapi_router_versioning import RouterVersioner, VersionFormat, api_version
 
@@ -32,10 +33,23 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 router = APIRouter()
 
 
+class CreateItemRequest(BaseModel):
+    name: str
+    quantity: int
+
+
 @router.get("/items")
 @api_version((1, 0))
 def list_items() -> dict[str, list[str]]:
     return {"items": []}
+
+
+# POST /items with an invalid "quantity" (e.g. "not-a-number") returns FastAPI's
+# default 422 validation error.
+@router.post("/items")
+@api_version((1, 0))
+def create_item(body: CreateItemRequest) -> dict[str, str]:
+    return {"name": body.name, "quantity": str(body.quantity)}
 
 
 versioner = RouterVersioner(

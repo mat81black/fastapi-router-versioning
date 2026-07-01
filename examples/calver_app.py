@@ -1,4 +1,5 @@
 from fastapi import APIRouter, FastAPI
+from pydantic import BaseModel
 
 from fastapi_router_versioning import RouterVersioner, VersionFormat, api_version
 
@@ -8,6 +9,11 @@ app = FastAPI(
 )
 
 router = APIRouter()
+
+
+class CreateItemRequest(BaseModel):
+    name: str
+    quantity: int
 
 
 # 1. Introduced in the January release, persists across all versions
@@ -39,6 +45,14 @@ def lifecycle_route() -> dict[str, str]:
 @api_version("2025-12-01")
 def future_route() -> dict[str, str]:
     return {"status": "active", "message": "Welcome to the December release!"}
+
+
+# POST /items with an invalid "quantity" (e.g. "not-a-number") returns FastAPI's
+# default 422 validation error.
+@router.post("/items")
+@api_version("2025-01-01")
+def create_item(body: CreateItemRequest) -> dict[str, str]:
+    return {"name": body.name, "quantity": str(body.quantity)}
 
 
 versioner = RouterVersioner(

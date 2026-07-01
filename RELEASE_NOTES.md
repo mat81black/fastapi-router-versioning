@@ -4,6 +4,7 @@
 
 ### Fixes
 
+* 🐛 Fix `RouterVersioner`'s root `/openapi.json` (and `/docs`, `/redoc`) never reflecting `validation_error_code`: the app's own `app.openapi()` is now patched too, so root and versioned schemas stay consistent without disabling anything. PR [#20](https://github.com/mat81black/fastapi-router-versioning/pull/20) by [@mat81black](https://github.com/mat81black).
 * 🐛 Fix silent mismatch when multiple `RouterVersioner` instances share the same app with different `validation_error_code`: now raises `RuntimeError` at construction time instead of silently keeping whichever handler was registered first. PR [#19](https://github.com/mat81black/fastapi-router-versioning/pull/19) by [@mat81black](https://github.com/mat81black).
 * 🐛 Fix silent route shadowing when multiple `RouterVersioner` instances share the same app with a colliding `prefix_format`/`latest_prefix`: now raises `RuntimeError` at `versionize()` time instead of leaving one instance's docs/openapi routes unreachable. PR [#19](https://github.com/mat81black/fastapi-router-versioning/pull/19) by [@mat81black](https://github.com/mat81black).
 

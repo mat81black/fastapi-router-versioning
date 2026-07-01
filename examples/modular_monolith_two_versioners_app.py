@@ -23,6 +23,11 @@ RouterVersioner attached to the same app.
 ``/orders/latest`` below): reusing the same alias across versioners raises
 ``RuntimeError`` too, since both would otherwise register colliding docs/openapi
 routes at the exact same path.
+
+The app's own root ``/docs``, ``/redoc``, and ``/openapi.json`` (not versioned)
+also correctly reflect ``validation_error_code`` — RouterVersioner patches
+``app.openapi()`` itself, so nothing needs to be disabled to get consistent
+schemas everywhere.
 """
 
 from fastapi import APIRouter, FastAPI
