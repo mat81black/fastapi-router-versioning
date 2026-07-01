@@ -218,6 +218,43 @@ def test_openapi_with_root_path_and_oauth2() -> None:
     assert schema["servers"][0]["url"] == "/api"
 
 
+def test_versioned_app_mounted_as_real_sub_application() -> None:
+    """A RouterVersioner-managed app works correctly when actually mounted via app.mount(),
+    not just simulated with a root_path passed to TestClient. Covers the ASGI root_path
+    FastAPI injects for real sub-applications: versioned docs/openapi, the root openapi patch
+    (validation_error_code), and runtime behavior must all resolve under the mount prefix."""
+    main_app = FastAPI()
+    sub_app = FastAPI()
+    router = APIRouter()
+
+    @router.post("/items")
+    @api_version((1, 0))
+    def create_item(count: int) -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=sub_app, routers=router, version_format=VersionFormat.SEMVER, validation_error_code=400
+    ).versionize()
+
+    main_app.mount("/sub", sub_app)
+
+    client = TestClient(main_app)
+
+    # Sub-app's own root schema (accessed through the mount) reflects validation_error_code.
+    sub_root_schema = client.get("/sub/openapi.json").json()
+    operation = sub_root_schema["paths"]["/v1_0/items"]["post"]
+    assert "400" in operation["responses"]
+    assert "422" not in operation["responses"]
+    assert sub_root_schema["servers"][0]["url"] == "/sub"
+
+    # Versioned schema is consistent too.
+    versioned_schema = client.get("/sub/v1_0/openapi.json").json()
+    assert versioned_schema["servers"][0]["url"] == "/sub"
+
+    # Runtime resolves correctly through the mount, with the custom code applied.
+    assert client.post("/sub/v1_0/items?count=bad", json={}).status_code == 400
+    assert client.get("/sub/v1_0/docs").status_code == 200
+
+
 def test_custom_formats_coverage() -> None:
     """Custom prefix_format and semantic_version_format are applied correctly."""
     app = FastAPI()

@@ -375,13 +375,18 @@ The app's own root `/docs`, `/redoc`, and `/openapi.json` (not versioned) also r
 `validation_error_code` — RouterVersioner patches `app.openapi()` itself, so nothing needs to
 be disabled to get consistent schemas everywhere.
 
-**Multiple `RouterVersioner` instances sharing one app** (e.g. one per module in a modular
-monolith) must all use the same `validation_error_code` when `handle_validation_exceptions=True`
-— since FastAPI's exception handler is app-wide, not per-router, a mismatch raises
-`RuntimeError` at construction time instead of silently picking whichever was registered
-first. Each instance must also use a distinct `prefix_format`/`latest_prefix`, otherwise their
-docs/openapi routes would collide at the same path — this also raises `RuntimeError`. See
-[`examples/modular_monolith_two_versioners_app.py`](examples/modular_monolith_two_versioners_app.py).
+**If you do share one app across multiple `RouterVersioner` instances** — the only case this is
+actually needed for is mixing `version_format` (e.g. SemVer for one group of routes, CalVer for
+another) on the same app, since a single instance already handles multiple routers and prefixes
+via `routers=[...]` (see [`multi_router_app.py`](examples/multi_router_app.py)). All instances
+must use the same `validation_error_code` when `handle_validation_exceptions=True` — since
+FastAPI's exception handler is app-wide, not per-router, a mismatch raises `RuntimeError` at
+construction time instead of silently picking whichever was registered first. Each instance
+must also use a distinct `prefix_format`/`latest_prefix`, otherwise their docs/openapi routes
+would collide at the same path — this also raises `RuntimeError`.
+
+For genuine module independence (separate `validation_error_code`, no risk of prefix collisions,
+isolated docs), mount each module as its own FastAPI sub-application instead — see below.
 
 ### Reverse proxy / sub-app mounting
 
@@ -392,6 +397,10 @@ parent = FastAPI()
 parent.mount("/api", app)  # root_path="/api" is injected at request time
 # /api/v1_0/docs correctly references /api/v1_0/openapi.json
 ```
+
+Each sub-application has its own independent `RouterVersioner`, `app.state`, and OpenAPI docs —
+no coordination needed between them, including different `validation_error_code` per
+sub-application. See [`examples/mounted_subapps_app.py`](examples/mounted_subapps_app.py).
 
 ### Callback hook
 
@@ -425,7 +434,7 @@ Runnable examples are available in the [`examples/`](examples/) directory:
 | [`self_hosted_docs_app.py`](examples/self_hosted_docs_app.py) | Swagger UI and ReDoc from local static assets |
 | [`validation_error_code_app.py`](examples/validation_error_code_app.py) | Return `400` instead of `422` for validation errors (automatic handler via `RouterVersioner`) |
 | [`validation_error_code_custom_handler_app.py`](examples/validation_error_code_custom_handler_app.py) | Same, but with `handle_validation_exceptions=False` and a user-defined exception handler |
-| [`modular_monolith_two_versioners_app.py`](examples/modular_monolith_two_versioners_app.py) | Two independent `RouterVersioner` instances (SemVer + CalVer) on one app, sharing the same `validation_error_code` |
+| [`mounted_subapps_app.py`](examples/mounted_subapps_app.py) | Independently versioned modules as separate FastAPI sub-applications via `app.mount()` |
 
 ---
 
