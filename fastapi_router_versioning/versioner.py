@@ -25,37 +25,6 @@ from starlette.requests import Request
 _route_contexts_fn: Callable[..., Any] | None = getattr(fastapi.routing, "iter_route_contexts", None)
 
 
-def _iter_routes_flat(routes: list[Any]) -> Iterator[Any]:
-    """
-    Flattens the route tree using iter_route_contexts (FastAPI >= 0.137.2),
-    or yields the original flat list for older versions.
-    """
-    if _route_contexts_fn is None:
-        yield from routes
-        return
-
-    for route_ctx in _route_contexts_fn(routes):
-        original = route_ctx.original_route
-        if isinstance(original, APIRoute):
-            # RouteContext merges path/tags/deps via __getattr__; use the context directly.
-            yield route_ctx
-        elif isinstance(original, APIWebSocketRoute):
-            # For WebSockets, RouteContext.__getattr__ does NOT merge parent prefixes into path.
-            # _route_context._EffectiveRouteContext holds the fully resolved starlette_route
-            # (with all include_router prefixes applied). Fall back to original for direct routes.
-            rc = getattr(route_ctx, "_route_context", None)
-            starlette_route = getattr(rc, "starlette_route", None) if rc is not None else None
-            yield starlette_route if starlette_route is not None else original
-        else:
-            yield original  # pragma: no cover
-
-
-def _unwrap_route(route: Any) -> Any:
-    # RouteContext (FastAPI >= 0.137.2) wraps the original route.
-    # Attributes like response_model, status_code, operation_id live on the original.
-    return getattr(route, "original_route", route)
-
-
 CallableT = TypeVar("CallableT", bound=Callable[..., Any])
 
 VersionT: TypeAlias = tuple[int, int] | str
@@ -240,11 +209,133 @@ class RouterVersioner:
                 error_msg = f"RouterVersioner expects CALVER, but found a non-string version '{version}' on {route_path}. Use a string like '2025-01-01'."
                 raise ValueError(error_msg)
 
+    def _register_validation_exception_handler(self) -> None:
+        existing_code = getattr(self._app.state, "_validation_effective_code", None)
+        if existing_code is not None:
+            if existing_code != self._validation_error_code:
+                raise RuntimeError(
+                    f"A validation exception handler is already registered on this app with status "
+                    f"code {existing_code}, which conflicts with the requested {self._validation_error_code}. "
+                    "All RouterVersioner instances with handle_validation_exceptions=True sharing the "
+                    "same app must use the same validation_error_code."
+                )
+            return  # same code already registered: idempotent
+
+        @self._app.exception_handler(RequestValidationError)
+        async def custom_validation_exception_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
+            return JSONResponse(
+                status_code=self._validation_error_code,
+                content={"detail": jsonable_encoder(exc.errors())},
+            )
+
+        self._app.state._validation_effective_code = self._validation_error_code
+
+    def _patch_root_openapi(self) -> None:
+        if getattr(self._app.state, "_root_openapi_patched", False):
+            return
+
+        original_openapi = self._app.openapi
+
+        def custom_openapi() -> dict[str, Any]:
+            schema = original_openapi()
+            self._patch_validation_error_openapi(schema)
+            self._app.openapi_schema = schema
+            return schema
+
+        self._app.openapi = custom_openapi  # type: ignore[method-assign] # ty:ignore[invalid-assignment]
+        self._app.state._root_openapi_patched = True
+
+    def _get_schema_validation_code(self) -> int:
+        if not self._handle_validation_exceptions:
+            return self._validation_error_code
+        return getattr(self._app.state, "_validation_effective_code", self._validation_error_code)
+
+    def _patch_validation_error_openapi(self, schema: dict[str, Any]) -> None:
+        target = self._get_schema_validation_code()
+        if target == 422:
+            return
+
+        target_code = str(target)
+        http_methods = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
+
+        for _path, path_item in schema.get("paths", {}).items():
+            for _method, operation in path_item.items():
+                if _method not in http_methods:
+                    continue
+
+                responses = operation.get("responses", {})
+                if "422" in responses:
+                    response_422 = responses["422"]
+                    content_422 = response_422.get("content", {}).get("application/json", {})
+                    schema_422 = content_422.get("schema", {})
+                    ref = schema_422.get("$ref", "")
+
+                    if ref.endswith("HTTPValidationError"):
+                        if target_code in responses:
+                            existing_response = responses[target_code]
+                            existing_content = existing_response.setdefault("content", {}).setdefault(
+                                "application/json", {}
+                            )
+                            existing_schema = existing_content.setdefault("schema", {})
+
+                            if "anyOf" in existing_schema:
+                                existing_schema["anyOf"].append(schema_422)
+                            elif existing_schema:
+                                existing_content["schema"] = {"anyOf": [existing_schema, schema_422]}
+                            else:
+                                existing_content["schema"] = schema_422
+
+                            old_desc = existing_response.get("description", "Error")
+                            existing_response["description"] = f"{old_desc} / Validation Error"
+
+                            del responses["422"]
+                        else:
+                            responses[target_code] = responses.pop("422")
+
     @staticmethod
     def _format_string(format_str: str, version: VersionT) -> str:
         if isinstance(version, tuple):
             return format_str.format(major=version[0], minor=version[1], version=f"{version[0]}_{version[1]}")
         return format_str.format(version=version, major=version, minor=version)
+
+    @staticmethod
+    def _version_gte(a: VersionT, b: VersionT) -> bool:
+        if isinstance(a, tuple) and isinstance(b, tuple):
+            return a >= b
+        if isinstance(a, str) and isinstance(b, str):
+            return a >= b
+        return False
+
+    @staticmethod
+    def _iter_routes_flat(routes: list[Any]) -> Iterator[Any]:
+        """
+        Flattens the route tree using iter_route_contexts (FastAPI >= 0.137.2),
+        or yields the original flat list for older versions.
+        """
+        if _route_contexts_fn is None:
+            yield from routes
+            return
+
+        for route_ctx in _route_contexts_fn(routes):
+            original = route_ctx.original_route
+            if isinstance(original, APIRoute):
+                # RouteContext merges path/tags/deps via __getattr__; use the context directly.
+                yield route_ctx
+            elif isinstance(original, APIWebSocketRoute):
+                # For WebSockets, RouteContext.__getattr__ does NOT merge parent prefixes into path.
+                # _route_context._EffectiveRouteContext holds the fully resolved starlette_route
+                # (with all include_router prefixes applied). Fall back to original for direct routes.
+                rc = getattr(route_ctx, "_route_context", None)
+                starlette_route = getattr(rc, "starlette_route", None) if rc is not None else None
+                yield starlette_route if starlette_route is not None else original
+            else:
+                yield original  # pragma: no cover
+
+    @staticmethod
+    def _unwrap_route(route: Any) -> Any:
+        # RouteContext (FastAPI >= 0.137.2) wraps the original route.
+        # Attributes like response_model, status_code, operation_id live on the original.
+        return getattr(route, "original_route", route)
 
     def _extract_version_attribute(self, endpoint: Any, attribute: str, route_path: str) -> VersionT | None:
         val = getattr(endpoint, attribute, None)
@@ -297,6 +388,67 @@ class RouterVersioner:
 
         return versions
 
+    @classmethod
+    def _get_route_keys(cls, route: Any) -> dict[tuple[str, str], Any]:
+        path = route.path
+        routes_by_key: dict[tuple[str, str], Any] = {}
+        route_type = cls._unwrap_route(route)
+
+        if isinstance(route_type, APIRoute):
+            for method in route.methods:
+                routes_by_key[(path, method)] = route
+        elif isinstance(route_type, APIWebSocketRoute):
+            routes_by_key[(path, "")] = route
+
+        return routes_by_key
+
+    def _resolve_lifecycle(self, routes: list[Any]) -> dict[VersionT, dict[tuple[str, str], Any]]:
+        """Accumulates active routes per version, honoring @api_version introduce/remove.
+
+        Shared by _get_routes_by_version and _get_webhooks_by_version: both need the same
+        introduce/remove bookkeeping, only the input route list and output shape differ.
+        """
+        introduced: dict[VersionT, list[Any]] = defaultdict(list)
+        for route in routes:
+            start_version = self._extract_version_attribute(route.endpoint, _ATTR_API_VERSION, route.path)
+            introduced[start_version if start_version is not None else self._default_version].append(route)
+
+        removed: dict[VersionT, list[Any]] = defaultdict(list)
+        for route in routes:
+            end_version = self._extract_version_attribute(route.endpoint, _ATTR_REMOVE_IN, route.path)
+            if end_version is not None:
+                removed[end_version].append(route)
+
+        active: dict[tuple[str, str], Any] = {}
+        result: dict[VersionT, dict[tuple[str, str], Any]] = {}
+
+        for version in sorted(set(introduced.keys()) | set(removed.keys())):
+            for route in introduced[version]:
+                active.update(self._get_route_keys(route=route))
+            for route in removed.get(version, []):
+                for route_key in self._get_route_keys(route=route):
+                    active.pop(route_key, None)
+            result[version] = dict(active)
+
+        return result
+
+    def _get_routes_by_version(self) -> dict[VersionT, dict[tuple[str, str], Any]]:
+        all_routes: list[Any] = []
+        for router in self._routers:
+            all_routes.extend(self._iter_routes_flat(router.routes))
+
+        return self._resolve_lifecycle(all_routes)
+
+    def _get_webhooks_by_version(self) -> dict[VersionT, list[Any]]:
+        if not self._webhook_routers:
+            return {}
+
+        all_webhooks: list[Any] = []
+        for router in self._webhook_routers:
+            all_webhooks.extend(self._iter_routes_flat(router.routes))
+
+        return {version: list(routes.values()) for version, routes in self._resolve_lifecycle(all_webhooks).items()}
+
     def _claim_prefix(self, prefix: str) -> None:
         claimed: set[str] | None = getattr(self._app.state, "_router_versioner_claimed_prefixes", None)
         if claimed is None:
@@ -311,6 +463,20 @@ class RouterVersioner:
                 "shadow each other."
             )
         claimed.add(prefix)
+
+    def _resolve_webhooks_for_version(
+        self, version: VersionT, webhooks_by_version: dict[VersionT, list[Any]]
+    ) -> list[Any]:
+        if not webhooks_by_version:
+            # webhook_routers not provided: fall back to global app.webhooks
+            return list(self._app.webhooks.routes)
+        if isinstance(version, tuple):
+            candidates: list[VersionT] = [v for v in webhooks_by_version if isinstance(v, tuple) and v <= version]
+        else:
+            candidates = [v for v in webhooks_by_version if isinstance(v, str) and v <= version]
+        if not candidates:
+            return []
+        return webhooks_by_version[max(candidates)]
 
     def _build_version_router(
         self,
@@ -331,101 +497,37 @@ class RouterVersioner:
 
         return router
 
-    def _get_routes_by_version(self) -> dict[VersionT, dict[tuple[str, str], Any]]:
-        all_routes: list[Any] = []
-        for router in self._routers:
-            all_routes.extend(_iter_routes_flat(router.routes))
+    def _add_route_to_router(self, route: Any, router: APIRouter, version: VersionT) -> None:
+        # Read attributes from the original route, not the RouteContext proxy. The proxy
+        # (FastAPI >= 0.137.2) only merges path/tags/deps; other fields such as
+        # response_model, status_code, and operation_id would be silently lost.
+        source_route = self._unwrap_route(route)
+        add_method: Callable[..., Any]
 
-        routes_introduced: dict[VersionT, list[Any]] = defaultdict(list)
-        for route in all_routes:
-            start_version = self._extract_version_attribute(route.endpoint, _ATTR_API_VERSION, route.path)
-            if start_version is None:
-                start_version = self._default_version
-            routes_introduced[start_version].append(route)
-
-        routes_removed: dict[VersionT, list[Any]] = defaultdict(list)
-        for route in all_routes:
-            end_version = self._extract_version_attribute(route.endpoint, _ATTR_REMOVE_IN, route.path)
-            if end_version is not None:
-                routes_removed[end_version].append(route)
-
-        all_version_keys = set(routes_introduced.keys()) | set(routes_removed.keys())
-        versions = sorted(all_version_keys)
-        routes_by_version: dict[VersionT, dict[tuple[str, str], Any]] = {}
-        active_routes: dict[tuple[str, str], Any] = {}
-
-        for version in versions:
-            for route in routes_introduced[version]:
-                active_routes.update(self._get_route_keys(route=route))
-
-            for route in routes_removed.get(version, []):
-                for route_key in self._get_route_keys(route=route):
-                    active_routes.pop(route_key, None)
-
-            routes_by_version[version] = dict(active_routes)
-
-        return routes_by_version
-
-    def _get_webhooks_by_version(self) -> dict[VersionT, list[Any]]:
-        if not self._webhook_routers:
-            return {}
-
-        all_webhooks: list[Any] = []
-        for router in self._webhook_routers:
-            all_webhooks.extend(_iter_routes_flat(router.routes))
-
-        webhooks_introduced: dict[VersionT, list[Any]] = defaultdict(list)
-        for route in all_webhooks:
-            v = self._extract_version_attribute(route.endpoint, _ATTR_API_VERSION, route.path)
-            webhooks_introduced[v if v is not None else self._default_version].append(route)
-
-        webhooks_removed: dict[VersionT, list[Any]] = defaultdict(list)
-        for route in all_webhooks:
-            v = self._extract_version_attribute(route.endpoint, _ATTR_REMOVE_IN, route.path)
-            if v is not None:
-                webhooks_removed[v].append(route)
-
-        combined_keys = set(webhooks_introduced.keys()) | set(webhooks_removed.keys())
-        result: dict[VersionT, list[Any]] = {}
-        active: dict[tuple[str, str], Any] = {}
-
-        for version in sorted(combined_keys):
-            for route in webhooks_introduced[version]:
-                active.update(self._get_route_keys(route=route))
-            for route in webhooks_removed.get(version, []):
-                for key in self._get_route_keys(route=route):
-                    active.pop(key, None)
-            result[version] = list(active.values())
-
-        return result
-
-    def _resolve_webhooks_for_version(
-        self, version: VersionT, webhooks_by_version: dict[VersionT, list[Any]]
-    ) -> list[Any]:
-        if not webhooks_by_version:
-            # webhook_routers not provided: fall back to global app.webhooks
-            return list(self._app.webhooks.routes)
-        if isinstance(version, tuple):
-            candidates: list[VersionT] = [v for v in webhooks_by_version if isinstance(v, tuple) and v <= version]
+        if isinstance(source_route, APIRoute):
+            add_method = router.add_api_route
+        elif isinstance(source_route, APIWebSocketRoute):
+            add_method = router.add_api_websocket_route
         else:
-            candidates = [v for v in webhooks_by_version if isinstance(v, str) and v <= version]
-        if not candidates:
-            return []
-        return webhooks_by_version[max(candidates)]
+            raise TypeError(f"Unsupported route type: {type(source_route).__name__}")
 
-    @classmethod
-    def _get_route_keys(cls, route: Any) -> dict[tuple[str, str], Any]:
-        path = route.path
-        routes_by_key: dict[tuple[str, str], Any] = {}
-        route_type = _unwrap_route(route)
+        valid_params = inspect.signature(add_method).parameters.keys()
+        filtered_kwargs = {k: getattr(source_route, k) for k in valid_params if hasattr(source_route, k)}
+        filtered_kwargs.setdefault("endpoint", source_route.endpoint)
+        # Override path/tags/deps with the merged values from RouteContext when present.
+        for merged_attr in ("path", "tags", "dependencies"):
+            if hasattr(route, merged_attr) and merged_attr in valid_params:
+                filtered_kwargs[merged_attr] = getattr(route, merged_attr)
 
-        if isinstance(route_type, APIRoute):
-            for method in route.methods:
-                routes_by_key[(path, method)] = route
-        elif isinstance(route_type, APIWebSocketRoute):
-            routes_by_key[(path, "")] = route
+        deprecated_in_version = self._extract_version_attribute(route.endpoint, _ATTR_DEPRECATE_IN, route.path)
+        if deprecated_in_version is not None and self._version_gte(version, deprecated_in_version):
+            filtered_kwargs["deprecated"] = True
 
-        return routes_by_key
+        # An empty string name causes an internal FastAPI error; drop it to use the default.
+        if "name" in filtered_kwargs and not filtered_kwargs["name"]:
+            filtered_kwargs.pop("name")
+
+        add_method(**filtered_kwargs)
 
     def _add_version_docs(self, router: APIRouter, version: VersionT, version_prefix: str, webhooks: list[Any]) -> None:
         doc_version_str = self._format_string(self._semantic_version_format, version)
@@ -581,123 +683,3 @@ class RouterVersioner:
                 version_models.append(version_model)
 
             return {"versions": version_models}
-
-    def _add_route_to_router(self, route: Any, router: APIRouter, version: VersionT) -> None:
-        # Read attributes from the original route, not the RouteContext proxy. The proxy
-        # (FastAPI >= 0.137.2) only merges path/tags/deps; other fields such as
-        # response_model, status_code, and operation_id would be silently lost.
-        source_route = _unwrap_route(route)
-        add_method: Callable[..., Any]
-
-        if isinstance(source_route, APIRoute):
-            add_method = router.add_api_route
-        elif isinstance(source_route, APIWebSocketRoute):
-            add_method = router.add_api_websocket_route
-        else:
-            raise TypeError(f"Unsupported route type: {type(source_route).__name__}")
-
-        valid_params = inspect.signature(add_method).parameters.keys()
-        filtered_kwargs = {k: getattr(source_route, k) for k in valid_params if hasattr(source_route, k)}
-        filtered_kwargs.setdefault("endpoint", source_route.endpoint)
-        # Override path/tags/deps with the merged values from RouteContext when present.
-        for merged_attr in ("path", "tags", "dependencies"):
-            if hasattr(route, merged_attr) and merged_attr in valid_params:
-                filtered_kwargs[merged_attr] = getattr(route, merged_attr)
-
-        deprecated_in_version = self._extract_version_attribute(route.endpoint, _ATTR_DEPRECATE_IN, route.path)
-        if deprecated_in_version is not None:
-            if isinstance(version, tuple) and isinstance(deprecated_in_version, tuple):
-                if version >= deprecated_in_version:
-                    filtered_kwargs["deprecated"] = True
-            elif isinstance(version, str) and isinstance(deprecated_in_version, str):
-                if version >= deprecated_in_version:
-                    filtered_kwargs["deprecated"] = True
-
-        # An empty string name causes an internal FastAPI error; drop it to use the default.
-        if "name" in filtered_kwargs and not filtered_kwargs["name"]:
-            filtered_kwargs.pop("name")
-
-        add_method(**filtered_kwargs)
-
-    def _register_validation_exception_handler(self) -> None:
-        existing_code = getattr(self._app.state, "_validation_effective_code", None)
-        if existing_code is not None:
-            if existing_code != self._validation_error_code:
-                raise RuntimeError(
-                    f"A validation exception handler is already registered on this app with status "
-                    f"code {existing_code}, which conflicts with the requested {self._validation_error_code}. "
-                    "All RouterVersioner instances with handle_validation_exceptions=True sharing the "
-                    "same app must use the same validation_error_code."
-                )
-            return  # same code already registered: idempotent
-
-        @self._app.exception_handler(RequestValidationError)
-        async def custom_validation_exception_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
-            return JSONResponse(
-                status_code=self._validation_error_code,
-                content={"detail": jsonable_encoder(exc.errors())},
-            )
-
-        self._app.state._validation_effective_code = self._validation_error_code
-
-    def _patch_root_openapi(self) -> None:
-        if getattr(self._app.state, "_root_openapi_patched", False):
-            return
-
-        original_openapi = self._app.openapi
-
-        def custom_openapi() -> dict[str, Any]:
-            schema = original_openapi()
-            self._patch_validation_error_openapi(schema)
-            self._app.openapi_schema = schema
-            return schema
-
-        self._app.openapi = custom_openapi  # type: ignore[method-assign] # ty:ignore[invalid-assignment]
-        self._app.state._root_openapi_patched = True
-
-    def _get_schema_validation_code(self) -> int:
-        if not self._handle_validation_exceptions:
-            return self._validation_error_code
-        return getattr(self._app.state, "_validation_effective_code", self._validation_error_code)
-
-    def _patch_validation_error_openapi(self, schema: dict[str, Any]) -> None:
-        target = self._get_schema_validation_code()
-        if target == 422:
-            return
-
-        target_code = str(target)
-        http_methods = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
-
-        for _path, path_item in schema.get("paths", {}).items():
-            for _method, operation in path_item.items():
-                if _method not in http_methods:
-                    continue
-
-                responses = operation.get("responses", {})
-                if "422" in responses:
-                    response_422 = responses["422"]
-                    content_422 = response_422.get("content", {}).get("application/json", {})
-                    schema_422 = content_422.get("schema", {})
-                    ref = schema_422.get("$ref", "")
-
-                    if ref.endswith("HTTPValidationError"):
-                        if target_code in responses:
-                            existing_response = responses[target_code]
-                            existing_content = existing_response.setdefault("content", {}).setdefault(
-                                "application/json", {}
-                            )
-                            existing_schema = existing_content.setdefault("schema", {})
-
-                            if "anyOf" in existing_schema:
-                                existing_schema["anyOf"].append(schema_422)
-                            elif existing_schema:
-                                existing_content["schema"] = {"anyOf": [existing_schema, schema_422]}
-                            else:
-                                existing_content["schema"] = schema_422
-
-                            old_desc = existing_response.get("description", "Error")
-                            existing_response["description"] = f"{old_desc} / Validation Error"
-
-                            del responses["422"]
-                        else:
-                            responses[target_code] = responses.pop("422")
