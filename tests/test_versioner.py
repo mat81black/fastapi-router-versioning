@@ -1107,6 +1107,17 @@ def test_validation_error_handler_registered_once_for_multiple_versioners() -> N
     assert getattr(app.state, "_validation_effective_code", None) == 400
 
 
+def test_version_gte_mismatched_types_returns_false() -> None:
+    """_version_gte returns False for values that aren't both tuples or both strings.
+
+    Defensive branch: normally unreachable via the public API, since _validate_version_type
+    enforces a single, consistent VersionT type (tuple for SEMVER, str for CALVER) per
+    RouterVersioner instance.
+    """
+    assert RouterVersioner._version_gte((1, 0), "2025-01-01") is False
+    assert RouterVersioner._version_gte("2025-01-01", (1, 0)) is False
+
+
 def test_patch_validation_error_openapi_skips_non_method_keys() -> None:
     """Non-HTTP-method keys in path items (e.g. 'parameters') are skipped without error."""
     app = FastAPI()
