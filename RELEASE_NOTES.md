@@ -2,6 +2,10 @@
 
 ## Latest Changes
 
+### Internal
+
+* 🔧 Integrate Codecov for coverage tracking and update README. PR [#34](https://github.com/mat81black/fastapi-router-versioning/pull/34) by [@mat81black](https://github.com/mat81black).
+
 ## 0.2.3 (2026-07-09)
 
 ### Docs
