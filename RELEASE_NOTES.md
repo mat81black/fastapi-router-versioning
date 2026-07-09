@@ -2,6 +2,9 @@
 
 ## Latest Changes
 
+### Docs
+* 📝 Rewrite README with PyPI-safe links and corrected project metadata. PR [#27](https://github.com/mat81black/fastapi-router-versioning/pull/27) by [@mat81black](https://github.com/mat81black).
+
 ### Internal
 
 * ⬆ bump the python-packages group with 2 updates. PR [#30](https://github.com/mat81black/fastapi-router-versioning/pull/30) by [@dependabot[bot]](https://github.com/apps/dependabot).
