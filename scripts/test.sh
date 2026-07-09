@@ -3,4 +3,4 @@
 set -e
 set -x
 
-coverage run -m pytest tests ${@}
+pytest tests ${@}

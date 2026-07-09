@@ -3,4 +3,4 @@
 set -e
 set -x
 
-bash scripts/test.sh --cov --cov-context=test ${@}
+coverage run -m pytest tests ${@}

@@ -15,10 +15,10 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/crate-ci/typos
-    rev: b859c0df7f391deba73030f79b957e62b4d81dc6 # varcon-core-v5.0.7
+    rev: bee27e3a4fd1ea2111cf90ab89cd076c870fce14 # v1.48.0
     hooks:
       - id: typos
-        args: [--force-exclude]
+        args: [ --force-exclude ]
 
   - repo: local
     hooks:
@@ -54,6 +54,6 @@ repos:
         name: zizmor
         language: python
         entry: uv run zizmor .
-        files: ^\.github/workflows/
+        files: ^\.github/workflows/|^uv\.lock$
         require_serial: true
         pass_filenames: false
