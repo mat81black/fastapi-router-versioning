@@ -1,0 +1,22 @@
+docs:
+  - all:
+    - changed-files:
+      - any-glob-to-any-file:
+        - README.md
+        - RELEASE_NOTES.md
+      - all-globs-to-all-files:
+        - '!fastapi_router_versioning/**'
+        - '!pyproject.toml'
+
+internal:
+  - all:
+    - changed-files:
+      - any-glob-to-any-file:
+        - .github/**
+        - scripts/**
+        - .gitignore
+        - .pre-commit-config.yaml
+        - uv.lock
+      - all-globs-to-all-files:
+        - '!fastapi_router_versioning/**'
+        - '!pyproject.toml'
