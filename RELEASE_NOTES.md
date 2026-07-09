@@ -4,6 +4,7 @@
 
 ### Internal
 
+* ⬆ bump https://github.com/crate-ci/typos from v1.48.0 to 5.0.7 in the pre-commit group. PR [#29](https://github.com/mat81black/fastapi-router-versioning/pull/29) by [@dependabot[bot]](https://github.com/apps/dependabot).
 * ⬆ bump dorny/paths-filter from 4.0.1 to 4.0.2 in the github-actions group. PR [#31](https://github.com/mat81black/fastapi-router-versioning/pull/31) by [@dependabot[bot]](https://github.com/apps/dependabot).
 * ⬆ bump fastapi from 0.138.1 to 0.139.0. PR [#32](https://github.com/mat81black/fastapi-router-versioning/pull/32) by [@dependabot[bot]](https://github.com/apps/dependabot).
 * 🔧 Overhaul CI/CD workflows for labeling, releases, and coverage tracking. PR [#28](https://github.com/mat81black/fastapi-router-versioning/pull/28) by [@mat81black](https://github.com/mat81black).
