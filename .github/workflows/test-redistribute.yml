@@ -12,6 +12,7 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: read
     timeout-minutes: 5
     outputs:
@@ -74,7 +75,7 @@ jobs:
           pip wheel --no-deps fastapi_router_versioning*.tar.gz
 
   # https://github.com/marketplace/actions/alls-green#why
-  test-redistribute-alls-green:
+  test-redistribute-alls-green:  # This job does nothing and is only used for the branch protection
     if: always()
     needs:
       - test-redistribute
