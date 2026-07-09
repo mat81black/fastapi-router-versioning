@@ -38,6 +38,8 @@ dependencies = [
 Homepage = "https://github.com/mat81black/fastapi-router-versioning"
 Repository = "https://github.com/mat81black/fastapi-router-versioning"
 Issues = "https://github.com/mat81black/fastapi-router-versioning/issues"
+Documentation = "https://github.com/mat81black/fastapi-router-versioning#readme"
+Changelog = "https://github.com/mat81black/fastapi-router-versioning/blob/main/RELEASE_NOTES.md"
 
 [dependency-groups]
 dev = [
