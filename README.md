@@ -1,7 +1,7 @@
 # FastAPI Router Versioning
 
 [![Build Status](https://github.com/mat81black/fastapi-router-versioning/workflows/Test/badge.svg)](https://github.com/mat81black/fastapi-router-versioning/actions)
-[![codecov](https://codecov.io/github/mat81black/fastapi-validation-override/graph/badge.svg?token=SL4JPWAB0O)](https://codecov.io/github/mat81black/fastapi-validation-override)
+[![codecov](https://codecov.io/github/mat81black/fastapi-router-versioning/graph/badge.svg?token=4WQ63Q7ESY)](https://codecov.io/github/mat81black/fastapi-router-versioning)
 [![Package version](https://badge.fury.io/py/fastapi-router-versioning.svg)](https://pypi.org/project/fastapi-router-versioning/)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/fastapi-router-versioning.svg?color=%2334D058)](https://pypi.org/project/fastapi-router-versioning/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
