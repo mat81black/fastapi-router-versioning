@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+## 0.2.3 (2026-07-09)
+
 ### Docs
 * 📝 Rewrite README with PyPI-safe links and corrected project metadata. PR [#27](https://github.com/mat81black/fastapi-router-versioning/pull/27) by [@mat81black](https://github.com/mat81black).
 
