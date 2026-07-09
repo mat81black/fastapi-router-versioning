@@ -2,6 +2,10 @@
 
 ## Latest Changes
 
+### Internal
+
+* 🔧 Overhaul CI/CD workflows for labeling, releases, and coverage tracking. PR [#28](https://github.com/mat81black/fastapi-router-versioning/pull/28) by [@mat81black](https://github.com/mat81black).
+
 ## 0.2.2 (2026-07-01)
 
 ### Fixes
