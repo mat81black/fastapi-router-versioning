@@ -4,6 +4,7 @@
 
 ### Internal
 
+* ⬆ bump fastapi from 0.138.1 to 0.139.0. PR [#32](https://github.com/mat81black/fastapi-router-versioning/pull/32) by [@dependabot[bot]](https://github.com/apps/dependabot).
 * 🔧 Overhaul CI/CD workflows for labeling, releases, and coverage tracking. PR [#28](https://github.com/mat81black/fastapi-router-versioning/pull/28) by [@mat81black](https://github.com/mat81black).
 
 ## 0.2.2 (2026-07-01)
