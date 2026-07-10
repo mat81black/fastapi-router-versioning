@@ -2,6 +2,10 @@
 
 ## Latest Changes
 
+### Fixes
+
+* 🐛 Fix misleading self-collision error in RouterVersioner prefix claiming. PR [#36](https://github.com/mat81black/fastapi-router-versioning/pull/36) by [@mat81black](https://github.com/mat81black).
+
 ## 0.2.4 (2026-07-09)
 
 ### Internal
