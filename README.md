@@ -152,7 +152,9 @@ A route without `@api_version` isn't excluded, it falls back to `default_version
 | `validation_error_code` | `int` | `422` | Status code returned for request validation errors; also replaces the `422` entry everywhere it appears in the OpenAPI schema, root schema included |
 | `handle_validation_exceptions` | `bool` | `True` | Set `False` to only patch the schema and register your own `RequestValidationError` handler |
 
-`.versionize()` returns the list of versions it activated.
+`.versionize()` returns the list of versions it activated. It can only be called once per
+instance; a second call raises `RuntimeError`, since it mutates the live FastAPI app in a way
+that can't be undone.
 
 ---
 
