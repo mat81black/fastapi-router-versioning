@@ -687,6 +687,29 @@ def test_default_version_mixed_with_explicitly_decorated_routes() -> None:
     assert client.get("/v3_0/explicit").status_code == 200
 
 
+def test_routers_as_list() -> None:
+    """routers accepts a list of APIRouter, not just a single one (multi-router support)."""
+    app = FastAPI()
+    router1 = APIRouter()
+    router2 = APIRouter()
+
+    @router1.get("/a")
+    @api_version((1, 0))
+    def route_a() -> dict[str, str]:
+        return {"msg": "a"}
+
+    @router2.get("/b")
+    @api_version((1, 0))
+    def route_b() -> dict[str, str]:
+        return {"msg": "b"}
+
+    RouterVersioner(app=app, routers=[router1, router2], version_format=VersionFormat.SEMVER).versionize()
+
+    client = TestClient(app)
+    assert client.get("/v1_0/a").status_code == 200
+    assert client.get("/v1_0/b").status_code == 200
+
+
 def test_openapi_callbacks_are_propagated_to_versioned_routes() -> None:
     """OpenAPI callbacks defined on a route are propagated to every versioned copy of that route."""
     app = FastAPI()
@@ -813,6 +836,38 @@ def test_webhook_routers_none_falls_back_to_app_webhooks() -> None:
     client = TestClient(app)
     schema_v1 = client.get("/v1_0/openapi.json").json()
     assert "/global-event" in schema_v1.get("webhooks", {})
+
+
+def test_webhook_routers_as_list() -> None:
+    """webhook_routers accepts a list of APIRouter, not just a single one."""
+    app = FastAPI()
+    router = APIRouter()
+    webhook_router1 = APIRouter()
+    webhook_router2 = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items() -> dict[str, str]: ...
+
+    @webhook_router1.post("/hook-a")
+    @api_version((1, 0))
+    def hook_a(body: dict[str, str]) -> None: ...
+
+    @webhook_router2.post("/hook-b")
+    @api_version((1, 0))
+    def hook_b(body: dict[str, str]) -> None: ...
+
+    RouterVersioner(
+        app=app,
+        routers=router,
+        webhook_routers=[webhook_router1, webhook_router2],
+        version_format=VersionFormat.SEMVER,
+    ).versionize()
+
+    client = TestClient(app)
+    schema = client.get("/v1_0/openapi.json").json()
+    assert "/hook-a" in schema.get("webhooks", {})
+    assert "/hook-b" in schema.get("webhooks", {})
 
 
 def test_webhook_routers_no_webhook_before_first_version() -> None:
@@ -1279,6 +1334,59 @@ def test_duplicate_version_prefix_across_versioners_raises() -> None:
 
     with pytest.raises(RuntimeError, match="already used by another RouterVersioner"):
         RouterVersioner(app=app, routers=router2, version_format=VersionFormat.SEMVER).versionize()
+
+
+def test_degenerate_prefix_format_self_collision_raises() -> None:
+    """A prefix_format without {major}/{minor}/{version} placeholders makes every version
+    resolve to the same prefix. This is a self-collision on a single instance, not a clash
+    with another RouterVersioner, so the error message must say so explicitly."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items_v1() -> dict[str, str]: ...
+
+    @router.get("/items")
+    @api_version((2, 0))
+    def get_items_v2() -> dict[str, str]: ...
+
+    with pytest.raises(RuntimeError, match="already claimed by this same RouterVersioner instance"):
+        RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER, prefix_format="/api").versionize()
+
+
+def test_latest_prefix_collides_with_own_version_prefix_raises() -> None:
+    """latest_prefix accidentally set to the same value as an actual version's own prefix is
+    a self-collision on a single instance, not a clash with another RouterVersioner."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items() -> dict[str, str]: ...
+
+    with pytest.raises(RuntimeError, match="already claimed by this same RouterVersioner instance"):
+        RouterVersioner(
+            app=app, routers=router, version_format=VersionFormat.SEMVER, latest_prefix="/v1_0"
+        ).versionize()
+
+
+def test_calling_versionize_twice_on_same_instance_raises() -> None:
+    """Calling .versionize() a second time on the same instance must raise a clear,
+    self-explanatory error instead of the misleading '...used by another RouterVersioner'
+    message that _claim_prefix would otherwise produce (it's the same instance, not another)."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items() -> dict[str, str]: ...
+
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER)
+    versioner.versionize()
+
+    with pytest.raises(RuntimeError, match="versionize\\(\\) was already called on this RouterVersioner instance"):
+        versioner.versionize()
 
 
 def test_duplicate_latest_prefix_across_versioners_raises() -> None:

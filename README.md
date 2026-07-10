@@ -2,7 +2,7 @@
 
 [![Build Status](https://github.com/mat81black/fastapi-router-versioning/workflows/Test/badge.svg)](https://github.com/mat81black/fastapi-router-versioning/actions)
 [![codecov](https://codecov.io/github/mat81black/fastapi-router-versioning/graph/badge.svg?token=4WQ63Q7ESY)](https://codecov.io/github/mat81black/fastapi-router-versioning)
-[![Package version](https://badge.fury.io/py/fastapi-router-versioning.svg)](https://pypi.org/project/fastapi-router-versioning/)
+[![pypi package](https://img.shields.io/pypi/v/fastapi-router-versioning?color=%2334D058&label=pypi%20package)](https://pypi.org/project/fastapi-router-versioning/)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/fastapi-router-versioning.svg?color=%2334D058)](https://pypi.org/project/fastapi-router-versioning/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -152,7 +152,9 @@ A route without `@api_version` isn't excluded, it falls back to `default_version
 | `validation_error_code` | `int` | `422` | Status code returned for request validation errors; also replaces the `422` entry everywhere it appears in the OpenAPI schema, root schema included |
 | `handle_validation_exceptions` | `bool` | `True` | Set `False` to only patch the schema and register your own `RequestValidationError` handler |
 
-`.versionize()` returns the list of versions it activated.
+`.versionize()` returns the list of versions it activated. It can only be called once per
+instance; a second call raises `RuntimeError`, since it mutates the live FastAPI app in a way
+that can't be undone.
 
 ---
 

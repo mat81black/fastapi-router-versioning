@@ -1,4 +1,5 @@
 import inspect
+import itertools
 
 from collections import defaultdict
 from collections.abc import Callable, Iterator
@@ -32,6 +33,12 @@ VersionT: TypeAlias = tuple[int, int] | str
 _ATTR_API_VERSION = "_api_version"
 _ATTR_DEPRECATE_IN = "_deprecate_in_version"
 _ATTR_REMOVE_IN = "_remove_in_version"
+
+# Unique per-instance token for _claim_prefix, so it can tell apart a prefix collision
+# caused by this same RouterVersioner instance (e.g. a degenerate prefix_format) from one
+# caused by a different instance sharing the app. Not id(self): that can be reused after
+# garbage collection for the common `RouterVersioner(...).versionize()` one-liner pattern.
+_instance_counter = itertools.count()
 
 
 class VersionFormat(str, Enum):
@@ -194,6 +201,8 @@ class RouterVersioner:
 
         self._validation_error_code = validation_error_code
         self._handle_validation_exceptions = handle_validation_exceptions
+        self._versionized = False
+        self._instance_token = next(_instance_counter)
 
         if self._validation_error_code != 422 and self._handle_validation_exceptions:
             self._register_validation_exception_handler()
@@ -345,6 +354,24 @@ class RouterVersioner:
         return None
 
     def versionize(self) -> list[VersionT]:
+        """
+        Reads the configured routers, groups their routes by version, and mounts one
+        versioned router per active version on the app.
+
+        May only be called once per instance: it mutates the live FastAPI app (including
+        routers, registering routes) in a way that cannot be undone, so a second call
+        would either duplicate routes or, if a version prefix was already claimed, raise.
+        Create a new RouterVersioner if you need to versionize again.
+
+        :return: The list of versions that were actually mounted.
+        """
+        if self._versionized:
+            raise RuntimeError(
+                "versionize() was already called on this RouterVersioner instance. "
+                "Create a new RouterVersioner if you need to versionize a router again."
+            )
+        self._versionized = True
+
         latest_version: VersionT | None = None
         latest_routes: dict[tuple[str, str], Any] = {}
         latest_webhooks: list[Any] = []
@@ -450,19 +477,27 @@ class RouterVersioner:
         return {version: list(routes.values()) for version, routes in self._resolve_lifecycle(all_webhooks).items()}
 
     def _claim_prefix(self, prefix: str) -> None:
-        claimed: set[str] | None = getattr(self._app.state, "_router_versioner_claimed_prefixes", None)
+        claimed: dict[str, int] | None = getattr(self._app.state, "_router_versioner_claimed_prefixes", None)
         if claimed is None:
-            claimed = set()
+            claimed = {}
             self._app.state._router_versioner_claimed_prefixes = claimed
 
-        if prefix in claimed:
+        owner = claimed.get(prefix)
+        if owner is not None:
+            if owner == self._instance_token:
+                raise RuntimeError(
+                    f"Prefix '{prefix}' was already claimed by this same RouterVersioner instance. "
+                    "This usually means prefix_format doesn't use {major}/{minor}/{version} and "
+                    "produces the same prefix for multiple versions, or latest_prefix collides "
+                    "with an already-active version prefix."
+                )
             raise RuntimeError(
                 f"Prefix '{prefix}' is already used by another RouterVersioner attached to this app. "
                 "Two RouterVersioner instances sharing the same app must use distinct "
                 "prefix_format/latest_prefix values, otherwise their docs/openapi routes silently "
                 "shadow each other."
             )
-        claimed.add(prefix)
+        claimed[prefix] = self._instance_token
 
     def _resolve_webhooks_for_version(
         self, version: VersionT, webhooks_by_version: dict[VersionT, list[Any]]
