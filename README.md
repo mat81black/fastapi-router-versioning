@@ -6,7 +6,7 @@
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/fastapi-router-versioning.svg?color=%2334D058)](https://pypi.org/project/fastapi-router-versioning/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-FastAPI doesn't ship a way to run multiple API versions side by side. Teams typically end up duplicating routers, hand-rolling prefixes, or branching on request paths, and every one of those gets harder to maintain as versions pile up. `RouterVersioner` takes a declarative approach instead: annotate each route with the version it belongs to, and it generates the URL prefixes, the per-version OpenAPI schema, and the docs for you, without moving anything else in your app.
+Running multiple API versions side by side usually means duplicating routers, hand-rolling prefixes, or branching on request paths, and every one of those gets harder to maintain as versions pile up. `RouterVersioner` takes a declarative approach instead: annotate each route with the version it belongs to, and it generates the URL prefixes, the per-version OpenAPI schema, and the docs for you, without moving anything else in your app.
 
 ---
 
