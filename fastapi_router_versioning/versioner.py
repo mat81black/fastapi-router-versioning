@@ -9,7 +9,7 @@ from typing import Any, TypeAlias, TypeVar
 import fastapi.openapi.utils
 import fastapi.routing
 
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.docs import (
@@ -19,7 +19,6 @@ from fastapi.openapi.docs import (
 )
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.routing import APIRoute, APIWebSocketRoute
-from starlette.requests import Request
 
 # iter_route_contexts was introduced in FastAPI 0.137.2. On older versions the
 # attribute does not exist and getattr returns None, activating the fallback path.
