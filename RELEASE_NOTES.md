@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+## 0.2.6 (2026-07-11)
+
 ### Refactors
 
 * ♻️ Use fastapi-native imports instead of importing from starlette directly. PR [#38](https://github.com/mat81black/fastapi-router-versioning/pull/38) by [@mat81black](https://github.com/mat81black).
