@@ -123,6 +123,15 @@ def legacy_route():
 A route without `@api_version` isn't excluded, it falls back to `default_version`
 (`(1, 0)` for SemVer, `"1"` for CalVer, unless overridden).
 
+FastAPI's own `deprecated=True` (set directly on a route, or inherited from
+`APIRouter(deprecated=True)`) is preserved as-is: `RouterVersioner` copies it into every
+version unconditionally, on top of whatever `deprecate_in` computes. `deprecate_in` only
+ever turns deprecation *on* for versions at or after its boundary, it never turns off a
+`deprecated=True` that was already set natively. If you set both on the same route, it
+shows as deprecated in every version, including ones before `deprecate_in`'s boundary.
+Use one or the other: `deprecated=True` for an unconditional, version-independent flag,
+`deprecate_in` for a per-version lifecycle.
+
 ---
 
 ## `RouterVersioner` reference
