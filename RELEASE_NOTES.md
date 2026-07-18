@@ -4,6 +4,7 @@
 
 ### Internal
 
+* ⬆ Bump pre-commit hooks. PR [#44](https://github.com/mat81black/fastapi-router-versioning/pull/44) by [@mat81black](https://github.com/mat81black).
 * ⬆ Bump the python-packages group across 1 directory with 5 updates. PR [#42](https://github.com/mat81black/fastapi-router-versioning/pull/42) by [@dependabot[bot]](https://github.com/apps/dependabot).
 * ⬆ Bump the github-actions group across 1 directory with 2 updates. PR [#41](https://github.com/mat81black/fastapi-router-versioning/pull/41) by [@dependabot[bot]](https://github.com/apps/dependabot).
 * 👷 Replace Dependabot pre-commit ecosystem with custom bump workflow. PR [#43](https://github.com/mat81black/fastapi-router-versioning/pull/43) by [@mat81black](https://github.com/mat81black).
