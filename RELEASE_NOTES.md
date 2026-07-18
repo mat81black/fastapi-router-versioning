@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+## 0.2.7 (2026-07-18)
+
 ### Internal
 
 * ⬆ Bump pre-commit hooks. PR [#44](https://github.com/mat81black/fastapi-router-versioning/pull/44) by [@mat81black](https://github.com/mat81black).
