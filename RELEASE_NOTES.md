@@ -2,6 +2,10 @@
 
 ## Latest Changes
 
+### Internal
+
+* 👷 Replace Dependabot pre-commit ecosystem with custom bump workflow. PR [#43](https://github.com/mat81black/fastapi-router-versioning/pull/43) by [@mat81black](https://github.com/mat81black).
+
 ## 0.2.6 (2026-07-11)
 
 ### Refactors
