@@ -20,7 +20,7 @@ class CreateItemRequest(BaseModel):
 
 main_app = FastAPI(title="Main App")
 
-# ── Admin sub-app: SemVer, validation errors return 400 ──────────────────────
+# ── Admin sub-app: SemVer ──────────────────────────────────────────────────
 
 admin_app = FastAPI(title="Admin API")
 admin_router = APIRouter()
@@ -38,9 +38,7 @@ def create_admin_item(body: CreateItemRequest) -> dict[str, str]:
     return {"name": body.name, "quantity": str(body.quantity)}
 
 
-RouterVersioner(
-    app=admin_app, routers=admin_router, version_format=VersionFormat.SEMVER, validation_error_code=400
-).versionize()
+RouterVersioner(app=admin_app, routers=admin_router, version_format=VersionFormat.SEMVER).versionize()
 
 
 # ── Orders sub-app: CalVer ────────────────────────────────────────────────────

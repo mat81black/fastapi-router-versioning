@@ -18,7 +18,6 @@ Running multiple API versions side by side usually means duplicating routers, ha
 - **Latest alias**: expose the newest version under a fixed `/latest` prefix clients can pin to
 - **Self-hosted docs assets**: point Swagger UI and ReDoc at your own JS/CSS for air-gapped deployments
 - **Reverse proxy and sub-app aware**: doc URLs pick up the ASGI `root_path` at request time
-- **Configurable validation error status**: swap FastAPI's default `422` for any code, applied consistently to runtime responses and every OpenAPI schema, including the app's own root schema
 - **Route composition support**: works across nested routers, WebSockets, `Depends`, and OpenAPI Callbacks
 
 ---
@@ -158,8 +157,6 @@ Use one or the other: `deprecated=True` for an unconditional, version-independen
 | `redoc_js_url` | `str \| None` | FastAPI CDN | Custom URL for the ReDoc JS bundle |
 | `redoc_favicon_url` | `str \| None` | FastAPI favicon | Custom URL for the ReDoc favicon |
 | `redoc_with_google_fonts` | `bool` | `True` | Set `False` to stop ReDoc from loading Google Fonts |
-| `validation_error_code` | `int` | `422` | Status code returned for request validation errors; also replaces the `422` entry everywhere it appears in the OpenAPI schema, root schema included |
-| `handle_validation_exceptions` | `bool` | `True` | Set `False` to only patch the schema and register your own `RequestValidationError` handler |
 
 `.versionize()` returns the list of versions it activated. It can only be called once per
 instance; a second call raises `RuntimeError`, since it mutates the live FastAPI app in a way
@@ -268,6 +265,41 @@ RouterVersioner(
 ).versionize()
 ```
 
+### Custom validation error status code
+
+Changing FastAPI's default `422` for request validation errors is not something
+`RouterVersioner` does itself: it's a separate, general-purpose concern, handled by the
+[fastapi-validation-override](https://pypi.org/project/fastapi-validation-override/) package.
+`openapi_hook` is the integration point: it lets you re-apply the same patch to every
+per-version schema that `RouterVersioner` generates, so all of them, root schema included,
+stay consistent.
+
+```bash
+uv add fastapi-validation-override
+```
+
+```python
+from fastapi_validation_override import override_validation_error, patch_422_responses
+
+# 1. Registers the runtime handler and patches the app's own root /openapi.json.
+override_validation_error(app, status_code=400)
+
+# 2. Re-applies the same patch to each version's own schema.
+def versioning_openapi_hook(schema: dict, version: tuple[int, int]) -> dict:
+    return patch_422_responses(schema, "400")
+
+RouterVersioner(
+    app=app,
+    routers=router,
+    version_format=VersionFormat.SEMVER,
+    openapi_hook=versioning_openapi_hook,
+).versionize()
+# Validation failures now return 400, both at runtime and in every schema
+# (root, and every /vX_Y/openapi.json)
+```
+
+See [`examples/validation_override_integration_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/validation_override_integration_app.py).
+
 ### OpenAPI Callbacks and Webhooks
 
 Route-level **Callbacks** need no special handling: a `callbacks=[...]` argument on a route
@@ -351,63 +383,18 @@ RouterVersioner(
 [`examples/download_static_assets.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/download_static_assets.py) downloads the required files in one step;
 [`examples/self_hosted_docs_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/self_hosted_docs_app.py) wires them into a full app.
 
-### Validation error status code
-
-`validation_error_code` changes what FastAPI returns for a failed request body/query/path
-validation, `422` by default, both at runtime and in the schema:
-
-```python
-RouterVersioner(
-    app=app,
-    routers=router,
-    version_format=VersionFormat.SEMVER,
-    validation_error_code=400,
-).versionize()
-# Validation failures now return 400; every 422 entry in the schema becomes 400
-```
-
-Set `handle_validation_exceptions=False` to keep the schema change while writing your own
-response body:
-
-```python
-from fastapi import Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-
-@app.exception_handler(RequestValidationError)
-async def my_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    return JSONResponse(status_code=400, content={"errors": exc.errors()})
-
-RouterVersioner(
-    app=app,
-    routers=router,
-    version_format=VersionFormat.SEMVER,
-    validation_error_code=400,
-    handle_validation_exceptions=False,  # schema updated; the handler above owns the response
-).versionize()
-```
-
-This also patches the app's own root `/docs`, `/redoc`, and `/openapi.json`, not just the
-versioned ones, so there's nothing left showing the stale `422`.
-
 Sharing one app across several `RouterVersioner` instances only makes sense for one reason:
 mixing `version_format` values, SemVer for one group of routes and CalVer for another, on
 the same app. Splitting modules that share a `version_format` doesn't need a second instance;
 pass them all to one `RouterVersioner` via `routers=[...]` instead (see
 [`multi_router_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/multi_router_app.py)).
-If you do share an app across instances, two rules are enforced for you:
+If you do share an app across instances, one rule is enforced for you: every instance needs
+its own `prefix_format`/`latest_prefix`. Two instances that resolve to the same prefix would
+otherwise overwrite each other's docs/openapi routes at the same path; this raises
+`RuntimeError`.
 
-- Every instance with `handle_validation_exceptions=True` must agree on
-  `validation_error_code`. FastAPI's exception handler is registered once per app, not per
-  router, so a mismatch raises `RuntimeError` when the second instance is constructed rather
-  than silently keeping whichever handler was registered first.
-- Every instance needs its own `prefix_format`/`latest_prefix`. Two instances that resolve to
-  the same prefix would otherwise overwrite each other's docs/openapi routes at the same
-  path; this raises `RuntimeError` too.
-
-For modules that genuinely don't need to coordinate at all, including a different
-`validation_error_code` each, mount them as separate FastAPI sub-applications instead (next
-section).
+For modules that genuinely don't need to coordinate at all, mount them as separate FastAPI
+sub-applications instead (next section).
 
 ### Reverse proxy and sub-application mounting
 
@@ -422,7 +409,7 @@ parent.mount("/api", app)  # root_path="/api" is injected per request
 
 A mounted sub-application is a separate `FastAPI()` instance with its own `app.state`, so a
 `RouterVersioner` attached to it is entirely independent from one attached to the parent, or
-to another sub-application, no shared `validation_error_code`, no prefix coordination needed.
+to another sub-application, no prefix coordination needed.
 See [`examples/mounted_subapps_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/mounted_subapps_app.py).
 
 ### Callback hook
@@ -455,9 +442,8 @@ RouterVersioner(
 | [`multi_router_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/multi_router_app.py) | Several routers versioned together under one instance |
 | [`self_hosted_docs_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/self_hosted_docs_app.py) | Swagger UI and ReDoc served from local static assets |
 | [`openapi_hook_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/openapi_hook_app.py) | Per-version OpenAPI schema edits via `openapi_hook` |
-| [`validation_error_code_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/validation_error_code_app.py) | `400` instead of `422`, handled automatically by `RouterVersioner` |
-| [`validation_error_code_custom_handler_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/validation_error_code_custom_handler_app.py) | Same, but with `handle_validation_exceptions=False` and a custom handler |
 | [`mounted_subapps_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/mounted_subapps_app.py) | Independently versioned modules as separate `app.mount()` sub-applications |
+| [`validation_override_integration_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/validation_override_integration_app.py) | Custom validation error status code via `fastapi-validation-override` and `openapi_hook` |
 
 ---
 
