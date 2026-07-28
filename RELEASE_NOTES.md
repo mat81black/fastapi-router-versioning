@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+🎉 First stable release of fastapi-router-versioning.
+
 ## 0.3.0 (2026-07-28)
 
 ### Breaking Changes
