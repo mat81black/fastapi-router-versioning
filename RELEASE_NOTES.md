@@ -6,6 +6,10 @@
 
 * ♻️ Remove built-in validation error override in favor of fastapi-validation-override. PR [#46](https://github.com/mat81black/fastapi-router-versioning/pull/46) by [@mat81black](https://github.com/mat81black).
 
+### Internal
+
+* ⬆ Bump the github-actions group with 5 updates. PR [#47](https://github.com/mat81black/fastapi-router-versioning/pull/47) by [@dependabot[bot]](https://github.com/apps/dependabot).
+
 ## 0.2.7 (2026-07-18)
 
 ### Internal
