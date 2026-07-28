@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+## 0.3.0 (2026-07-28)
+
 ### Breaking Changes
 
 * ♻️ Remove built-in validation error override in favor of fastapi-validation-override. PR [#46](https://github.com/mat81black/fastapi-router-versioning/pull/46) by [@mat81black](https://github.com/mat81black).
