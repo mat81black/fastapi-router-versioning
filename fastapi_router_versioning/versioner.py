@@ -435,14 +435,26 @@ class RouterVersioner:
         if self._sort_routes:
             routes_by_key = dict(sorted(routes_by_key.items()))
 
-        for route in routes_by_key.values():
-            self._add_route_to_router(route=route, router=router, version=version)
+        grouped_routes: dict[int, tuple[Any, set[str]]] = {}
+        for (_path, method), keyed_route in routes_by_key.items():
+            route_id = id(keyed_route)
+            if route_id not in grouped_routes:
+                grouped_routes[route_id] = (keyed_route, set())
+            if method:
+                grouped_routes[route_id][1].add(method)
+
+        for route, active_methods in grouped_routes.values():
+            self._add_route_to_router(
+                route=route, router=router, version=version, active_methods=active_methods or None
+            )
 
         self._add_version_docs(router=router, version=version, version_prefix=version_prefix, webhooks=webhooks)
 
         return router
 
-    def _add_route_to_router(self, route: Any, router: APIRouter, version: VersionT) -> None:
+    def _add_route_to_router(
+        self, route: Any, router: APIRouter, version: VersionT, active_methods: set[str] | None = None
+    ) -> None:
         # Read attributes from the original route, not the RouteContext proxy. The proxy
         # (FastAPI >= 0.137.2) only merges path/tags/deps; other fields such as
         # response_model, status_code, and operation_id would be silently lost.
@@ -463,6 +475,10 @@ class RouterVersioner:
         for merged_attr in ("path", "tags", "dependencies"):
             if hasattr(route, merged_attr) and merged_attr in valid_params:
                 filtered_kwargs[merged_attr] = getattr(route, merged_attr)
+        # A sibling route may have taken over some of this route's original methods at this
+        # version: mount only the methods still assigned to it, not its full original set.
+        if active_methods is not None and "methods" in valid_params:
+            filtered_kwargs["methods"] = active_methods
 
         deprecated_in_version = self._extract_version_attribute(route.endpoint, _ATTR_DEPRECATE_IN, route.path)
         if deprecated_in_version is not None and self._version_gte(version, deprecated_in_version):
