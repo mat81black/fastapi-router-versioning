@@ -654,9 +654,19 @@ class RouterVersioner:
 
             if self._include_version_openapi_route and self._app.openapi_url is not None:
                 version_model["openapi_url"] = f"{root_path}{version_prefix}{self._app.openapi_url}"
-            if self._include_version_docs and self._include_version_openapi_route and self._docs_url is not None:
+            if (
+                self._include_version_docs
+                and self._include_version_openapi_route
+                and self._docs_url is not None
+                and self._app.openapi_url is not None
+            ):
                 version_model["swagger_url"] = f"{root_path}{version_prefix}{self._docs_url}"
-            if self._include_version_docs and self._include_version_openapi_route and self._redoc_url is not None:
+            if (
+                self._include_version_docs
+                and self._include_version_openapi_route
+                and self._redoc_url is not None
+                and self._app.openapi_url is not None
+            ):
                 version_model["redoc_url"] = f"{root_path}{version_prefix}{self._redoc_url}"
 
             version_models.append(version_model)
