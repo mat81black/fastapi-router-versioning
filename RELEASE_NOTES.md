@@ -4,6 +4,7 @@
 
 ### Fixes
 
+* 🐛 Fix missing OpenAPI validation in docs URL checks when versioning is enabled. PR [#61](https://github.com/mat81black/fastapi-router-versioning/pull/61) by [@mat81black](https://github.com/mat81black).
 * 🐛 Fix versionize() failures blocking any retry on the same app. PR [#58](https://github.com/mat81black/fastapi-router-versioning/pull/58) by [@mat81black](https://github.com/mat81black).
 * 🐛 Fix OpenAPI schema caching to handle /latest alias independently. PR [#57](https://github.com/mat81black/fastapi-router-versioning/pull/57) by [@mat81black](https://github.com/mat81black).
 * 🐛 Fix include_version_openapi_route not disabling docs UIs. PR [#55](https://github.com/mat81black/fastapi-router-versioning/pull/55) by [@mat81black](https://github.com/mat81black).
