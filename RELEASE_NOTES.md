@@ -13,6 +13,7 @@
 
 ### Refactors
 
+* ♻️ Refactor `_add_versions_route` to support multiple version model providers. PR [#60](https://github.com/mat81black/fastapi-router-versioning/pull/60) by [@mat81black](https://github.com/mat81black).
 * 🐛 Simplify `versionize()` error handling and remove rollback logic. PR [#59](https://github.com/mat81black/fastapi-router-versioning/pull/59) by [@mat81black](https://github.com/mat81black).
 
 ## 1.0.0 (2026-07-28)
