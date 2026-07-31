@@ -26,6 +26,7 @@ _route_contexts_fn: Callable[..., Any] | None = getattr(fastapi.routing, "iter_r
 CallableT = TypeVar("CallableT", bound=Callable[..., Any])
 
 VersionT: TypeAlias = tuple[int, int] | str
+_OpenAPICacheKey: TypeAlias = tuple[VersionT, str]
 
 _ATTR_API_VERSION = "_api_version"
 _ATTR_DEPRECATE_IN = "_deprecate_in_version"
@@ -178,8 +179,8 @@ class RouterVersioner:
         self._redoc_js_url = redoc_js_url
         self._redoc_favicon_url = redoc_favicon_url
         self._redoc_with_google_fonts = redoc_with_google_fonts
-        self._openapi_schemas_cache: dict[VersionT, dict[str, Any]] = {}
-        self._openapi_routes_versions: dict[VersionT, int | None] = {}
+        self._openapi_schemas_cache: dict[_OpenAPICacheKey, dict[str, Any]] = {}
+        self._openapi_routes_versions: dict[_OpenAPICacheKey, int | None] = {}
 
         if default_version is None:
             self._default_version: VersionT = (1, 0) if version_format == VersionFormat.SEMVER else "1"
@@ -497,7 +498,9 @@ class RouterVersioner:
         openapi_url = self._app.openapi_url
 
         if self._include_version_openapi_route and openapi_url is not None:
-            self._add_openapi_route(router, title, doc_version_str, versioned_tags, openapi_url, version, webhooks)
+            self._add_openapi_route(
+                router, title, doc_version_str, versioned_tags, openapi_url, version, version_prefix, webhooks
+            )
 
         if (
             self._include_version_docs
@@ -534,8 +537,11 @@ class RouterVersioner:
         versioned_tags: list[dict[str, Any]],
         openapi_url: str,
         version: VersionT,
+        version_prefix: str,
         webhooks: list[Any],
     ) -> None:
+        cache_key: _OpenAPICacheKey = (version, version_prefix)
+
         @router.get(openapi_url, include_in_schema=False)
         async def get_openapi(req: Request) -> Any:
             # _get_routes_version() is the same internal FastAPI uses for its own schema cache;
@@ -544,8 +550,8 @@ class RouterVersioner:
             _get_routes_version = getattr(router, "_get_routes_version", None)
             current_routes_version = _get_routes_version() if _get_routes_version else None
 
-            cached = self._openapi_schemas_cache.get(version)
-            if cached is None or self._openapi_routes_versions.get(version) != current_routes_version:
+            cached = self._openapi_schemas_cache.get(cache_key)
+            if cached is None or self._openapi_routes_versions.get(cache_key) != current_routes_version:
                 schema = fastapi.openapi.utils.get_openapi(
                     title=title,
                     version=doc_version_str,
@@ -565,10 +571,10 @@ class RouterVersioner:
 
                 if self._openapi_hook is not None:
                     schema = self._openapi_hook(schema, version)
-                self._openapi_schemas_cache[version] = schema
-                self._openapi_routes_versions[version] = current_routes_version
+                self._openapi_schemas_cache[cache_key] = schema
+                self._openapi_routes_versions[cache_key] = current_routes_version
             else:
-                schema = self._openapi_schemas_cache[version]
+                schema = self._openapi_schemas_cache[cache_key]
 
             # root_path is per-request: shallow copy to avoid polluting the cache
             root_path = req.scope.get("root_path", "").rstrip("/")

@@ -808,6 +808,43 @@ def test_latest_prefix_points_to_highest_sorted_version() -> None:
     assert client.get("/latest/old").status_code == 404
 
 
+def test_latest_prefix_openapi_schema_is_cached_independently_of_canonical() -> None:
+    """The canonical version and its /latest alias share the same `version` value but are
+    built from two distinct routers with different prefixes: their OpenAPI schemas must not
+    collide in the cache, regardless of which one is requested first.
+    """
+
+    def build_app() -> FastAPI:
+        app = FastAPI()
+        router = APIRouter()
+
+        @router.get("/item")
+        @api_version((1, 0))
+        def item() -> dict[str, bool]:
+            return {"ok": True}
+
+        RouterVersioner(
+            app=app, routers=router, version_format=VersionFormat.SEMVER, latest_prefix="/latest"
+        ).versionize()
+        return app
+
+    # Canonical requested first.
+    client_a = TestClient(build_app())
+    assert client_a.get("/v1_0/item").json() == {"ok": True}
+    schema_v1_a = client_a.get("/v1_0/openapi.json").json()
+    schema_latest_a = client_a.get("/latest/openapi.json").json()
+    assert list(schema_v1_a["paths"].keys()) == ["/v1_0/item"]
+    assert list(schema_latest_a["paths"].keys()) == ["/latest/item"]
+
+    # Alias requested first: the order must not change the outcome.
+    client_b = TestClient(build_app())
+    assert client_b.get("/latest/item").json() == {"ok": True}
+    schema_latest_b = client_b.get("/latest/openapi.json").json()
+    schema_v1_b = client_b.get("/v1_0/openapi.json").json()
+    assert list(schema_latest_b["paths"].keys()) == ["/latest/item"]
+    assert list(schema_v1_b["paths"].keys()) == ["/v1_0/item"]
+
+
 def test_default_version_mixed_with_explicitly_decorated_routes() -> None:
     """Routes without @api_version use default_version as start; decorated routes use
     their own. Routes accumulate: a route from v2.0 is still present in v3.0."""
