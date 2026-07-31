@@ -654,6 +654,83 @@ def test_deprecate_in_alone_creates_the_deprecation_version() -> None:
     assert schema_v2["paths"]["/v2_0/item"]["get"]["deprecated"] is True
 
 
+def test_multi_method_route_is_mounted_once() -> None:
+    """A route declared with multiple HTTP methods (methods=["GET", "POST"]) occupies one
+    (path, method) key per method in the internal bookkeeping, all pointing to the same route
+    object: it must still be mounted on the versioned router exactly once, not once per method.
+    """
+    import functools
+
+    from unittest.mock import patch
+
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.api_route("/item", methods=["GET", "POST"])
+    @api_version((1, 0))
+    def item() -> dict[str, bool]:
+        return {"ok": True}
+
+    original_add_api_route = APIRouter.add_api_route
+    calls_for_item: list[str] = []
+
+    # inspect.signature(add_method) inside _add_route_to_router relies on the real
+    # add_api_route signature to build its kwargs; functools.wraps keeps that intact.
+    @functools.wraps(original_add_api_route)
+    def spy(self: APIRouter, *args: Any, **kwargs: Any) -> Any:
+        path = kwargs.get("path", args[0] if args else None)
+        if path == "/item":
+            calls_for_item.append(path)
+        return original_add_api_route(self, *args, **kwargs)
+
+    with patch.object(APIRouter, "add_api_route", spy):
+        RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER).versionize()
+
+    # Without the fix, add_api_route is called once per method sharing the (path, method) keys
+    # generated for the same route, i.e. twice for methods=["GET", "POST"].
+    assert len(calls_for_item) == 1
+
+    client = TestClient(app)
+    assert client.get("/v1_0/item").status_code == 200
+    assert client.post("/v1_0/item").status_code == 200
+
+
+def test_dedicated_route_takes_over_one_method_of_a_multi_method_route() -> None:
+    """A dedicated single-method route can replace just one method of an earlier multi-method
+    route, without the multi-method route's stale copy of that method resurfacing.
+
+    item_multi handles GET+POST from 1.0. item_post_v2 takes over POST alone from 2.0. At 2.0,
+    item_multi must be re-mounted with GET only: mounting it with its original full method set
+    (GET+POST) would re-register POST for it too, colliding with item_post_v2.
+    """
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.api_route("/item", methods=["GET", "POST"])
+    @api_version((1, 0))
+    def item_multi() -> dict[str, str]:
+        return {"handler": "multi"}
+
+    @router.post("/item")
+    @api_version((2, 0))
+    def item_post_v2() -> dict[str, str]:
+        return {"handler": "post_v2"}
+
+    RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER).versionize()
+
+    client = TestClient(app)
+    assert client.get("/v1_0/item").json() == {"handler": "multi"}
+    assert client.post("/v1_0/item").json() == {"handler": "multi"}
+
+    # GET is untouched, still served by item_multi. POST is now exclusively item_post_v2's,
+    # not a stale duplicate coming from item_multi's original method set.
+    assert client.get("/v2_0/item").json() == {"handler": "multi"}
+    assert client.post("/v2_0/item").json() == {"handler": "post_v2"}
+
+    schema = client.get("/v2_0/openapi.json").json()
+    assert sorted(schema["paths"]["/v2_0/item"].keys()) == ["get", "post"]
+
+
 def test_include_version_docs_false_disables_swagger_and_redoc() -> None:
     """include_version_docs=False: /docs and /redoc return 404; /openapi.json still works."""
     app = FastAPI()
