@@ -625,6 +625,35 @@ def test_remove_in_does_not_evict_a_newer_route_at_the_same_path() -> None:
     assert client.get("/v3_0/item").json() == {"v": "2"}
 
 
+def test_deprecate_in_alone_creates_the_deprecation_version() -> None:
+    """deprecate_in must produce a version boundary even when it's the only lifecycle change
+    on the route: otherwise the version where the deprecation becomes observable never exists.
+    """
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/item")
+    @api_version((1, 0), deprecate_in=(2, 0))
+    def get_item() -> dict[str, str]:
+        return {"v": "1"}
+
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER)
+    versions = versioner.versionize()
+    # Without the fix, only (1, 0) is generated: (2, 0) is absent from both introduced and
+    # removed, so it never enters the version set.
+    assert versions == [(1, 0), (2, 0)]
+
+    client = TestClient(app)
+    # The route is still active (and reachable) in both versions.
+    assert client.get("/v1_0/item").status_code == 200
+    assert client.get("/v2_0/item").status_code == 200
+
+    schema_v1 = client.get("/v1_0/openapi.json").json()
+    schema_v2 = client.get("/v2_0/openapi.json").json()
+    assert schema_v1["paths"]["/v1_0/item"]["get"].get("deprecated") is None
+    assert schema_v2["paths"]["/v2_0/item"]["get"]["deprecated"] is True
+
+
 def test_include_version_docs_false_disables_swagger_and_redoc() -> None:
     """include_version_docs=False: /docs and /redoc return 404; /openapi.json still works."""
     app = FastAPI()
