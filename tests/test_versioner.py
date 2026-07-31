@@ -379,6 +379,36 @@ def test_openapi_hook_none_does_not_affect_schema() -> None:
     assert "x-custom" not in response.json().get("info", {})
 
 
+def test_failing_openapi_hook_does_not_affect_versionize_or_the_api_route() -> None:
+    """A failing openapi_hook is unrelated to versionize()'s fatal-failure contract: the hook
+    only runs lazily, when /openapi.json is actually requested, not during versionize()
+    itself. versionize() must succeed, the regular API route must keep working, and the
+    error must surface only when the schema is fetched.
+    """
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/item")
+    @api_version((1, 0))
+    def item() -> dict[str, str]:
+        return {"ok": "true"}
+
+    def failing_openapi_hook(_schema: dict[str, Any], _version: VersionT) -> dict[str, Any]:
+        raise RuntimeError("OpenAPI generation failed")
+
+    versioner = RouterVersioner(
+        app=app, routers=router, version_format=VersionFormat.SEMVER, openapi_hook=failing_openapi_hook
+    )
+    versions = versioner.versionize()
+    assert versions == [(1, 0)]
+
+    client = TestClient(app)
+    assert client.get("/v1_0/item").json() == {"ok": "true"}
+
+    with pytest.raises(RuntimeError, match="OpenAPI generation failed"):
+        client.get("/v1_0/openapi.json")
+
+
 def test_openapi_tags_empty_when_no_route_uses_a_tag() -> None:
     """Tags list is empty when none of the routes in the version carry any tag."""
     app = FastAPI(openapi_tags=[{"name": "auth", "description": "Authentication"}])
@@ -1277,15 +1307,9 @@ def test_duplicate_latest_prefix_across_versioners_raises() -> None:
         ).versionize()
 
 
-def test_versionize_rolls_back_on_mid_failure_and_allows_retry() -> None:
-    """A callback failing partway through versionize() must not leave the app half-mounted.
-
-    v1 and v3 are fine; the callback raises while processing v2. Before the fix, v1 would
-    already be mounted and both /v1_0 and /v2_0 would be claimed in app.state (the latter a
-    ghost claim, since v2's router was built but never included), permanently blocking both
-    a retry on this instance (_versionized already True) and a fresh instance on the same app
-    (prefixes already claimed). None of that must happen now: the whole call is all-or-nothing.
-    """
+def test_versionize_callback_failure_is_fatal_and_propagates() -> None:
+    """A callback raising partway through versionize() is a fatal, unrecoverable error: it
+    must propagate as-is, not be swallowed or wrapped."""
     app = FastAPI()
     router = APIRouter()
 
@@ -1296,10 +1320,6 @@ def test_versionize_rolls_back_on_mid_failure_and_allows_retry() -> None:
     @router.get("/item")
     @api_version((2, 0))
     def item_v2() -> dict[str, int]: ...
-
-    @router.get("/item")
-    @api_version((3, 0))
-    def item_v3() -> dict[str, int]: ...
 
     processed_versions: list[VersionT] = []
 
@@ -1314,31 +1334,35 @@ def test_versionize_rolls_back_on_mid_failure_and_allows_retry() -> None:
         versioner.versionize()
 
     assert processed_versions == [(1, 0), (2, 0)]
-    assert versioner._versionized is False
 
-    client = TestClient(app)
-    assert client.get("/v1_0/item").status_code == 404
-    assert client.get("/v2_0/item").status_code == 404
-    assert client.get("/v3_0/item").status_code == 404
-    assert getattr(app.state, "_router_versioner_claimed_prefixes", None) is None
 
-    # A fresh RouterVersioner instance on the same app can now retry from a clean slate.
-    router_retry = APIRouter()
+def test_versionize_rejects_retry_after_a_failed_attempt() -> None:
+    """Once versionize() has failed, this same instance must never be usable again: the
+    FastAPI app it was building may already be partially mounted, so silently allowing a
+    second attempt could paper over a broken, half-versioned app instead of surfacing it."""
+    app = FastAPI()
+    router = APIRouter()
 
-    @router_retry.get("/item")
+    @router.get("/item")
     @api_version((1, 0))
-    def item_v1_retry() -> dict[str, str]:
-        return {"v": "retried"}
+    def item() -> dict[str, str]: ...
 
-    versions = RouterVersioner(app=app, routers=router_retry, version_format=VersionFormat.SEMVER).versionize()
-    assert versions == [(1, 0)]
-    assert client.get("/v1_0/item").json() == {"v": "retried"}
+    def failing_callback(_router: APIRouter, _version: VersionT, _prefix: str) -> None:
+        raise ValueError("boom")
+
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER, callback=failing_callback)
+
+    with pytest.raises(ValueError, match="boom"):
+        versioner.versionize()
+
+    with pytest.raises(RuntimeError, match="versionize\\(\\) was already called on this RouterVersioner instance"):
+        versioner.versionize()
 
 
-def test_versionize_rolls_back_commit_phase_failure() -> None:
+def test_versionize_commit_phase_failure_propagates_and_blocks_retry() -> None:
     """A failure during the commit phase (after every version was already prepared
-    successfully) must roll back everything committed so far in this call, not just the
-    version that failed: mounting is all-or-nothing.
+    successfully, so some versions may already be mounted) is fatal, exactly like a failure
+    during the prepare phase: it propagates as-is, and this instance is never usable again.
     """
     from unittest.mock import patch
 
@@ -1352,8 +1376,7 @@ def test_versionize_rolls_back_commit_phase_failure() -> None:
 
     @router.get("/item")
     @api_version((2, 0))
-    def item_v2() -> dict[str, int]:
-        return {"v": 2}
+    def item_v2() -> dict[str, int]: ...
 
     versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER)
 
@@ -1370,48 +1393,14 @@ def test_versionize_rolls_back_commit_phase_failure() -> None:
         with pytest.raises(ValueError, match="simulated failure while mounting the second version"):
             versioner.versionize()
 
-    assert versioner._versionized is False
-    assert getattr(app.state, "_router_versioner_claimed_prefixes", None) == set()
-
+    # v1 was mounted before v2's include_router call failed: the app is left partially
+    # mounted on purpose, since nothing here attempts to undo it.
     client = TestClient(app)
-    # v1 was mounted first, before v2's include_router call failed; both must be rolled back.
-    assert client.get("/v1_0/item").status_code == 404
+    assert client.get("/v1_0/item").status_code == 200
     assert client.get("/v2_0/item").status_code == 404
 
-    versions = versioner.versionize()
-    assert versions == [(1, 0), (2, 0)]
-    assert client.get("/v1_0/item").status_code == 200
-    assert client.get("/v2_0/item").status_code == 200
-
-
-def test_versionize_allows_retry_on_same_instance_after_transient_failure() -> None:
-    """After a failed versionize() call, the same instance is not permanently unusable:
-    fixing the underlying issue and calling versionize() again must succeed cleanly."""
-    app = FastAPI()
-    router = APIRouter()
-
-    @router.get("/item")
-    @api_version((1, 0))
-    def item() -> dict[str, str]:
-        return {"ok": "true"}
-
-    attempts = {"count": 0}
-
-    def flaky_callback(_router: APIRouter, _version: VersionT, _prefix: str) -> None:
-        attempts["count"] += 1
-        if attempts["count"] == 1:
-            raise ValueError("fails only on the first attempt")
-
-    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER, callback=flaky_callback)
-
-    with pytest.raises(ValueError, match="fails only on the first attempt"):
+    with pytest.raises(RuntimeError, match="versionize\\(\\) was already called on this RouterVersioner instance"):
         versioner.versionize()
-
-    versions = versioner.versionize()
-    assert versions == [(1, 0)]
-
-    client = TestClient(app)
-    assert client.get("/v1_0/item").json() == {"ok": "true"}
 
 
 def test_iter_routes_flat_fallback_without_route_context_fn() -> None:

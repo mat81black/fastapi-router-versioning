@@ -429,12 +429,10 @@ RouterVersioner(
 ).versionize()
 ```
 
-If `versionize()` raises (e.g. the callback itself throws), the app's route table and this
-package's internal prefix bookkeeping are rolled back to how they were before the call, so a
-new call — on a fresh `RouterVersioner`, or the same instance after fixing the issue — starts
-from a clean slate. This rollback does not extend to side effects the callback itself performed
-(writing to a database, sending a message, etc.): those are not undone, so keep the callback
-idempotent or safe to run again if you rely on retrying.
+If `versionize()` raises (e.g. the callback itself throws), don't catch the exception and
+retry: some versions may already be mounted, and this package makes no attempt to undo that.
+`versionize()` normally runs at startup, so the app simply fails to start — fix the underlying
+issue and start it again.
 
 ---
 
