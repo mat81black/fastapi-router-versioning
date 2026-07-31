@@ -750,8 +750,10 @@ def test_include_version_docs_false_disables_swagger_and_redoc() -> None:
 
 
 def test_include_version_openapi_route_false_disables_openapi_json() -> None:
-    """include_version_openapi_route=False: /openapi.json returns 404.
-    /docs and /redoc are also 404 because the condition requires openapi_url to be present."""
+    """include_version_openapi_route=False: /openapi.json returns 404. /docs and /redoc must
+    also be disabled, since both fetch their schema from that same, now-missing URL; leaving
+    them mounted would only produce a docs page stuck on a fetch error.
+    """
     app = FastAPI()
     router = APIRouter()
 
@@ -759,13 +761,24 @@ def test_include_version_openapi_route_false_disables_openapi_json() -> None:
     @api_version((1, 0))
     def test_route() -> dict[str, str]: ...
 
-    versioner = RouterVersioner(app=app, routers=router, include_version_docs=True, include_version_openapi_route=False)
+    versioner = RouterVersioner(
+        app=app,
+        routers=router,
+        include_version_docs=True,
+        include_version_openapi_route=False,
+        include_versions_route=True,
+    )
     versioner.versionize()
 
     client = TestClient(app)
     assert client.get("/v1_0/openapi.json").status_code == 404
-    assert client.get("/v1_0/docs").status_code == 200
-    assert client.get("/v1_0/redoc").status_code == 200
+    assert client.get("/v1_0/docs").status_code == 404
+    assert client.get("/v1_0/redoc").status_code == 404
+
+    version_model = client.get("/versions").json()["versions"][0]
+    assert "openapi_url" not in version_model
+    assert "swagger_url" not in version_model
+    assert "redoc_url" not in version_model
 
 
 def test_latest_prefix_points_to_highest_sorted_version() -> None:
