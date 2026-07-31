@@ -355,8 +355,12 @@ class RouterVersioner:
             for route in introduced[version]:
                 active.update(self._get_route_keys(route=route))
             for route in removed.get(version, []):
-                for route_key in self._get_route_keys(route=route):
-                    active.pop(route_key, None)
+                for route_key, keyed_route in self._get_route_keys(route=route).items():
+                    # Only remove the key if this route is still its active occupant. A newer
+                    # route sharing the same (path, method) may have already replaced it, in
+                    # which case remove_in on the superseded route must not evict the newer one.
+                    if active.get(route_key) is keyed_route:
+                        del active[route_key]
             result[version] = dict(active)
 
         return result
