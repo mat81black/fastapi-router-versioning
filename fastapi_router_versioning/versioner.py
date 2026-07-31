@@ -253,18 +253,9 @@ class RouterVersioner:
         Reads the configured routers, groups their routes by version, and mounts one
         versioned router per active version on the app.
 
-        May only be called once per instance. The work happens in two phases: first every
-        version's router is built and its callback (if any) invoked entirely in memory,
-        without touching the app or claiming any prefix; only once that succeeds for every
-        version does a second phase claim the prefixes and mount the routers. If anything
-        raises during either phase, the app's route table and this package's internal prefix
-        claims are rolled back to exactly how they were before the call, so the instance can
-        safely be retried after fixing the underlying issue.
-
-        This guarantee does not extend to side effects performed by a user-supplied
-        `callback` (e.g. writing to a database, sending a message): those cannot be undone
-        by this package and are the caller's responsibility to make idempotent or safe to
-        retry.
+        May only be called once per instance. If it raises, the app failed to load: don't
+        catch the exception and retry, since some versions may already be mounted and this
+        package makes no attempt to undo that.
 
         :return: The list of versions that were actually mounted.
         """
@@ -273,6 +264,7 @@ class RouterVersioner:
                 "versionize() was already called on this RouterVersioner instance. "
                 "Create a new RouterVersioner if you need to versionize a router again."
             )
+        self._versionized = True
 
         routes_by_version = self._get_routes_by_version()
         versions = list(routes_by_version.keys())
@@ -315,23 +307,13 @@ class RouterVersioner:
                 self._callback(latest_router, latest_version, self._latest_prefix)
             prepared.append((self._latest_prefix, latest_router))
 
-        routes_mark = len(self._app.router.routes)
-        try:
-            for prefix, _router in prepared:
-                self._claim_prefix(prefix)
-            for _prefix, router in prepared:
-                self._app.include_router(router=router)
-            if self._include_versions_route:
-                self._add_versions_route(versions=versions)
-        except Exception:
-            del self._app.router.routes[routes_mark:]
-            claimed: set[str] | None = getattr(self._app.state, "_router_versioner_claimed_prefixes", None)
-            if claimed is not None:
-                for prefix, _router in prepared:
-                    claimed.discard(prefix)
-            raise
+        for prefix, _router in prepared:
+            self._claim_prefix(prefix)
+        for _prefix, router in prepared:
+            self._app.include_router(router=router)
+        if self._include_versions_route:
+            self._add_versions_route(versions=versions)
 
-        self._versionized = True
         return versions
 
     @classmethod
