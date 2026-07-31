@@ -1277,6 +1277,143 @@ def test_duplicate_latest_prefix_across_versioners_raises() -> None:
         ).versionize()
 
 
+def test_versionize_rolls_back_on_mid_failure_and_allows_retry() -> None:
+    """A callback failing partway through versionize() must not leave the app half-mounted.
+
+    v1 and v3 are fine; the callback raises while processing v2. Before the fix, v1 would
+    already be mounted and both /v1_0 and /v2_0 would be claimed in app.state (the latter a
+    ghost claim, since v2's router was built but never included), permanently blocking both
+    a retry on this instance (_versionized already True) and a fresh instance on the same app
+    (prefixes already claimed). None of that must happen now: the whole call is all-or-nothing.
+    """
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/item")
+    @api_version((1, 0))
+    def item_v1() -> dict[str, int]: ...
+
+    @router.get("/item")
+    @api_version((2, 0))
+    def item_v2() -> dict[str, int]: ...
+
+    @router.get("/item")
+    @api_version((3, 0))
+    def item_v3() -> dict[str, int]: ...
+
+    processed_versions: list[VersionT] = []
+
+    def failing_callback(_router: APIRouter, version: VersionT, _prefix: str) -> None:
+        processed_versions.append(version)
+        if version == (2, 0):
+            raise ValueError("simulated failure while processing v2")
+
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER, callback=failing_callback)
+
+    with pytest.raises(ValueError, match="simulated failure while processing v2"):
+        versioner.versionize()
+
+    assert processed_versions == [(1, 0), (2, 0)]
+    assert versioner._versionized is False
+
+    client = TestClient(app)
+    assert client.get("/v1_0/item").status_code == 404
+    assert client.get("/v2_0/item").status_code == 404
+    assert client.get("/v3_0/item").status_code == 404
+    assert getattr(app.state, "_router_versioner_claimed_prefixes", None) is None
+
+    # A fresh RouterVersioner instance on the same app can now retry from a clean slate.
+    router_retry = APIRouter()
+
+    @router_retry.get("/item")
+    @api_version((1, 0))
+    def item_v1_retry() -> dict[str, str]:
+        return {"v": "retried"}
+
+    versions = RouterVersioner(app=app, routers=router_retry, version_format=VersionFormat.SEMVER).versionize()
+    assert versions == [(1, 0)]
+    assert client.get("/v1_0/item").json() == {"v": "retried"}
+
+
+def test_versionize_rolls_back_commit_phase_failure() -> None:
+    """A failure during the commit phase (after every version was already prepared
+    successfully) must roll back everything committed so far in this call, not just the
+    version that failed: mounting is all-or-nothing.
+    """
+    from unittest.mock import patch
+
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/item")
+    @api_version((1, 0))
+    def item_v1() -> dict[str, int]:
+        return {"v": 1}
+
+    @router.get("/item")
+    @api_version((2, 0))
+    def item_v2() -> dict[str, int]:
+        return {"v": 2}
+
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER)
+
+    original_include_router = FastAPI.include_router
+    calls = {"count": 0}
+
+    def failing_include_router(self: FastAPI, *args: Any, **kwargs: Any) -> None:
+        calls["count"] += 1
+        if calls["count"] == 2:
+            raise ValueError("simulated failure while mounting the second version")
+        original_include_router(self, *args, **kwargs)
+
+    with patch.object(FastAPI, "include_router", failing_include_router):
+        with pytest.raises(ValueError, match="simulated failure while mounting the second version"):
+            versioner.versionize()
+
+    assert versioner._versionized is False
+    assert getattr(app.state, "_router_versioner_claimed_prefixes", None) == set()
+
+    client = TestClient(app)
+    # v1 was mounted first, before v2's include_router call failed; both must be rolled back.
+    assert client.get("/v1_0/item").status_code == 404
+    assert client.get("/v2_0/item").status_code == 404
+
+    versions = versioner.versionize()
+    assert versions == [(1, 0), (2, 0)]
+    assert client.get("/v1_0/item").status_code == 200
+    assert client.get("/v2_0/item").status_code == 200
+
+
+def test_versionize_allows_retry_on_same_instance_after_transient_failure() -> None:
+    """After a failed versionize() call, the same instance is not permanently unusable:
+    fixing the underlying issue and calling versionize() again must succeed cleanly."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/item")
+    @api_version((1, 0))
+    def item() -> dict[str, str]:
+        return {"ok": "true"}
+
+    attempts = {"count": 0}
+
+    def flaky_callback(_router: APIRouter, _version: VersionT, _prefix: str) -> None:
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            raise ValueError("fails only on the first attempt")
+
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER, callback=flaky_callback)
+
+    with pytest.raises(ValueError, match="fails only on the first attempt"):
+        versioner.versionize()
+
+    versions = versioner.versionize()
+    assert versions == [(1, 0)]
+
+    client = TestClient(app)
+    assert client.get("/v1_0/item").json() == {"ok": "true"}
+
+
 def test_iter_routes_flat_fallback_without_route_context_fn() -> None:
     """Covers the _route_contexts_fn=None fallback (legacy FastAPI < 0.137.2).
 
