@@ -592,6 +592,39 @@ def test_latest_prefix_created_when_final_version_has_no_routes() -> None:
     assert client.get("/latest/data").status_code == 404  # empty version → no routes
 
 
+def test_remove_in_does_not_evict_a_newer_route_at_the_same_path() -> None:
+    """remove_in on a superseded route must not evict the route that replaced it.
+
+    item_v1 is introduced in 1.0 and marked remove_in=3.0. item_v2 replaces it at the same
+    (path, method) starting in 2.0. By the time 3.0 processes item_v1's removal, item_v1 is
+    no longer the active occupant of that (path, method) key, so the removal must be a no-op:
+    item_v2 stays active in 3.0.
+    """
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/item")
+    @api_version((1, 0), remove_in=(3, 0))
+    def item_v1() -> dict[str, str]:
+        return {"v": "1"}
+
+    @router.get("/item")
+    @api_version((2, 0))
+    def item_v2() -> dict[str, str]:
+        return {"v": "2"}
+
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER)
+    versions = versioner.versionize()
+    assert versions == [(1, 0), (2, 0), (3, 0)]
+
+    client = TestClient(app)
+    assert client.get("/v1_0/item").json() == {"v": "1"}
+    assert client.get("/v2_0/item").json() == {"v": "2"}
+    # Without the fix, item_v1's remove_in=(3, 0) evicts item_v2 too, since both share the
+    # same (path, method) key: this used to 404 instead of resolving to item_v2.
+    assert client.get("/v3_0/item").json() == {"v": "2"}
+
+
 def test_include_version_docs_false_disables_swagger_and_redoc() -> None:
     """include_version_docs=False: /docs and /redoc return 404; /openapi.json still works."""
     app = FastAPI()
