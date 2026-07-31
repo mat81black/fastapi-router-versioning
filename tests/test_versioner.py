@@ -42,6 +42,40 @@ def test_versions_endpoint_generation() -> None:
     assert v1_info["redoc_url"] == "/v1_0/redoc"
 
 
+def test_versions_endpoint_aggregates_across_versioners_sharing_an_app() -> None:
+    """Two RouterVersioner instances sharing one app (e.g. mixing SemVer and CalVer) must
+    both contribute to a single /versions endpoint, not shadow one another: only one GET
+    /versions route is registered, and it lists every instance's versions."""
+    app = FastAPI()
+
+    semver_router = APIRouter()
+
+    @semver_router.get("/items")
+    @api_version((1, 0))
+    def items() -> dict[str, str]: ...
+
+    calver_router = APIRouter()
+
+    @calver_router.get("/orders")
+    @api_version("2025-01-01")
+    def orders() -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=semver_router, version_format=VersionFormat.SEMVER, include_versions_route=True
+    ).versionize()
+    RouterVersioner(
+        app=app, routers=calver_router, version_format=VersionFormat.CALVER, include_versions_route=True
+    ).versionize()
+
+    matching_routes = [r for r in app.routes if getattr(r, "path", None) == "/versions"]
+    assert len(matching_routes) == 1
+
+    client = TestClient(app)
+    data = client.get("/versions").json()
+    versions = {v["version"] for v in data["versions"]}
+    assert versions == {"1.0", "2025-01-01"}
+
+
 def test_default_version_applied_to_undecorated_routes() -> None:
     """Routes without @api_version should fall back to the configured default_version."""
     app = FastAPI()
