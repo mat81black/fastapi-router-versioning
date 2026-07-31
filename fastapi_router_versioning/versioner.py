@@ -343,15 +343,19 @@ class RouterVersioner:
             introduced[start_version if start_version is not None else self._default_version].append(route)
 
         removed: dict[VersionT, list[Any]] = defaultdict(list)
+        deprecated: set[VersionT] = set()
         for route in routes:
             end_version = self._extract_version_attribute(route.endpoint, _ATTR_REMOVE_IN, route.path)
             if end_version is not None:
                 removed[end_version].append(route)
+            deprecate_version = self._extract_version_attribute(route.endpoint, _ATTR_DEPRECATE_IN, route.path)
+            if deprecate_version is not None:
+                deprecated.add(deprecate_version)
 
         active: dict[tuple[str, str], Any] = {}
         result: dict[VersionT, dict[tuple[str, str], Any]] = {}
 
-        for version in sorted(set(introduced.keys()) | set(removed.keys())):
+        for version in sorted(set(introduced.keys()) | set(removed.keys()) | deprecated):
             for route in introduced[version]:
                 active.update(self._get_route_keys(route=route))
             for route in removed.get(version, []):
