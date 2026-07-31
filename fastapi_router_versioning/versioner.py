@@ -1,5 +1,4 @@
 import inspect
-import itertools
 
 from collections import defaultdict
 from collections.abc import Callable, Iterator
@@ -31,12 +30,6 @@ _OpenAPICacheKey: TypeAlias = tuple[VersionT, str]
 _ATTR_API_VERSION = "_api_version"
 _ATTR_DEPRECATE_IN = "_deprecate_in_version"
 _ATTR_REMOVE_IN = "_remove_in_version"
-
-# Unique per-instance token for _claim_prefix, so it can tell apart a prefix collision
-# caused by this same RouterVersioner instance (e.g. a degenerate prefix_format) from one
-# caused by a different instance sharing the app. Not id(self): that can be reused after
-# garbage collection for the common `RouterVersioner(...).versionize()` one-liner pattern.
-_instance_counter = itertools.count()
 
 
 class VersionFormat(str, Enum):
@@ -192,7 +185,6 @@ class RouterVersioner:
         self._redoc_url = getattr(app, "redoc_url", "/redoc")
 
         self._versionized = False
-        self._instance_token = next(_instance_counter)
 
     def _validate_version_type(self, version: Any, route_path: str) -> None:
         if self._version_format == VersionFormat.SEMVER:
@@ -261,10 +253,18 @@ class RouterVersioner:
         Reads the configured routers, groups their routes by version, and mounts one
         versioned router per active version on the app.
 
-        May only be called once per instance: it mutates the live FastAPI app (including
-        routers, registering routes) in a way that cannot be undone, so a second call
-        would either duplicate routes or, if a version prefix was already claimed, raise.
-        Create a new RouterVersioner if you need to versionize again.
+        May only be called once per instance. The work happens in two phases: first every
+        version's router is built and its callback (if any) invoked entirely in memory,
+        without touching the app or claiming any prefix; only once that succeeds for every
+        version does a second phase claim the prefixes and mount the routers. If anything
+        raises during either phase, the app's route table and this package's internal prefix
+        claims are rolled back to exactly how they were before the call, so the instance can
+        safely be retried after fixing the underlying issue.
+
+        This guarantee does not extend to side effects performed by a user-supplied
+        `callback` (e.g. writing to a database, sending a message): those cannot be undone
+        by this package and are the caller's responsibility to make idempotent or safe to
+        retry.
 
         :return: The list of versions that were actually mounted.
         """
@@ -273,36 +273,38 @@ class RouterVersioner:
                 "versionize() was already called on this RouterVersioner instance. "
                 "Create a new RouterVersioner if you need to versionize a router again."
             )
-        self._versionized = True
-
-        latest_version: VersionT | None = None
-        latest_routes: dict[tuple[str, str], Any] = {}
-        latest_webhooks: list[Any] = []
 
         routes_by_version = self._get_routes_by_version()
         versions = list(routes_by_version.keys())
         webhooks_by_version = self._get_webhooks_by_version()
 
+        prepared: list[tuple[str, APIRouter]] = []
+        staged_prefixes: set[str] = set()
+        latest_version: VersionT | None = None
+        latest_routes: dict[tuple[str, str], Any] = {}
+        latest_webhooks: list[Any] = []
+
         for version, routes_by_key in routes_by_version.items():
             version_prefix = self._format_string(self._prefix_format, version)
-            self._claim_prefix(version_prefix)
-            active_webhooks = self._resolve_webhooks_for_version(version, webhooks_by_version)
+            self._check_prefix_available(version_prefix, staged_prefixes)
+            staged_prefixes.add(version_prefix)
 
+            active_webhooks = self._resolve_webhooks_for_version(version, webhooks_by_version)
             version_router = self._build_version_router(
                 version=version, version_prefix=version_prefix, routes_by_key=routes_by_key, webhooks=active_webhooks
             )
-
             if self._callback:
                 self._callback(version_router, version, version_prefix)
 
-            self._app.include_router(router=version_router)
-
+            prepared.append((version_prefix, version_router))
             latest_version = version
             latest_routes = routes_by_key
             latest_webhooks = active_webhooks
 
         if self._latest_prefix is not None and latest_version is not None:
-            self._claim_prefix(self._latest_prefix)
+            self._check_prefix_available(self._latest_prefix, staged_prefixes)
+            staged_prefixes.add(self._latest_prefix)
+
             latest_router = self._build_version_router(
                 version=latest_version,
                 version_prefix=self._latest_prefix,
@@ -311,11 +313,25 @@ class RouterVersioner:
             )
             if self._callback:
                 self._callback(latest_router, latest_version, self._latest_prefix)
-            self._app.include_router(router=latest_router)
+            prepared.append((self._latest_prefix, latest_router))
 
-        if self._include_versions_route:
-            self._add_versions_route(versions=versions)
+        routes_mark = len(self._app.router.routes)
+        try:
+            for prefix, _router in prepared:
+                self._claim_prefix(prefix)
+            for _prefix, router in prepared:
+                self._app.include_router(router=router)
+            if self._include_versions_route:
+                self._add_versions_route(versions=versions)
+        except Exception:
+            del self._app.router.routes[routes_mark:]
+            claimed: set[str] | None = getattr(self._app.state, "_router_versioner_claimed_prefixes", None)
+            if claimed is not None:
+                for prefix, _router in prepared:
+                    claimed.discard(prefix)
+            raise
 
+        self._versionized = True
         return versions
 
     @classmethod
@@ -387,28 +403,37 @@ class RouterVersioner:
 
         return {version: list(routes.values()) for version, routes in self._resolve_lifecycle(all_webhooks).items()}
 
-    def _claim_prefix(self, prefix: str) -> None:
-        claimed: dict[str, int] | None = getattr(self._app.state, "_router_versioner_claimed_prefixes", None)
-        if claimed is None:
-            claimed = {}
-            self._app.state._router_versioner_claimed_prefixes = claimed
+    @staticmethod
+    def _raise_prefix_claimed_by_self(prefix: str) -> None:
+        raise RuntimeError(
+            f"Prefix '{prefix}' was already claimed by this same RouterVersioner instance. "
+            "This usually means prefix_format doesn't use {major}/{minor}/{version} and "
+            "produces the same prefix for multiple versions, or latest_prefix collides "
+            "with an already-active version prefix."
+        )
 
-        owner = claimed.get(prefix)
-        if owner is not None:
-            if owner == self._instance_token:
-                raise RuntimeError(
-                    f"Prefix '{prefix}' was already claimed by this same RouterVersioner instance. "
-                    "This usually means prefix_format doesn't use {major}/{minor}/{version} and "
-                    "produces the same prefix for multiple versions, or latest_prefix collides "
-                    "with an already-active version prefix."
-                )
-            raise RuntimeError(
-                f"Prefix '{prefix}' is already used by another RouterVersioner attached to this app. "
-                "Two RouterVersioner instances sharing the same app must use distinct "
-                "prefix_format/latest_prefix values, otherwise their docs/openapi routes silently "
-                "shadow each other."
-            )
-        claimed[prefix] = self._instance_token
+    @staticmethod
+    def _raise_prefix_claimed_by_other(prefix: str) -> None:
+        raise RuntimeError(
+            f"Prefix '{prefix}' is already used by another RouterVersioner attached to this app. "
+            "Two RouterVersioner instances sharing the same app must use distinct "
+            "prefix_format/latest_prefix values, otherwise their docs/openapi routes silently "
+            "shadow each other."
+        )
+
+    def _check_prefix_available(self, prefix: str, staged_prefixes: set[str]) -> None:
+        if prefix in staged_prefixes:
+            self._raise_prefix_claimed_by_self(prefix)
+        claimed: set[str] | None = getattr(self._app.state, "_router_versioner_claimed_prefixes", None)
+        if claimed is not None and prefix in claimed:
+            self._raise_prefix_claimed_by_other(prefix)
+
+    def _claim_prefix(self, prefix: str) -> None:
+        claimed: set[str] | None = getattr(self._app.state, "_router_versioner_claimed_prefixes", None)
+        if claimed is None:
+            claimed = set()
+            self._app.state._router_versioner_claimed_prefixes = claimed
+        claimed.add(prefix)
 
     def _resolve_webhooks_for_version(
         self, version: VersionT, webhooks_by_version: dict[VersionT, list[Any]]
