@@ -76,6 +76,28 @@ def test_versions_endpoint_aggregates_across_versioners_sharing_an_app() -> None
     assert versions == {"1.0", "2025-01-01"}
 
 
+def test_versions_endpoint_omits_doc_links_when_app_openapi_url_is_none() -> None:
+    """FastAPI(openapi_url=None) disables Swagger/ReDoc mounting for every version (see
+    _add_version_docs, which requires app.openapi_url is not None). /versions must not
+    advertise swagger_url/redoc_url in that case either, or they'd point at 404s."""
+    app = FastAPI(openapi_url=None)
+    router = APIRouter()
+
+    @router.get("/item")
+    @api_version((1, 0))
+    def item() -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=router, version_format=VersionFormat.SEMVER, include_versions_route=True
+    ).versionize()
+
+    client = TestClient(app)
+    version_model = client.get("/versions").json()["versions"][0]
+    assert "openapi_url" not in version_model
+    assert "swagger_url" not in version_model
+    assert "redoc_url" not in version_model
+
+
 def test_default_version_applied_to_undecorated_routes() -> None:
     """Routes without @api_version should fall back to the configured default_version."""
     app = FastAPI()
