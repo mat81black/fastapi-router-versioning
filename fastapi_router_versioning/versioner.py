@@ -499,10 +499,20 @@ class RouterVersioner:
         if self._include_version_openapi_route and openapi_url is not None:
             self._add_openapi_route(router, title, doc_version_str, versioned_tags, openapi_url, version, webhooks)
 
-        if self._include_version_docs and self._docs_url is not None and openapi_url is not None:
+        if (
+            self._include_version_docs
+            and self._include_version_openapi_route
+            and self._docs_url is not None
+            and openapi_url is not None
+        ):
             self._add_swagger_ui_routes(router, title, version_prefix, self._docs_url, openapi_url)
 
-        if self._include_version_docs and self._redoc_url is not None and openapi_url is not None:
+        if (
+            self._include_version_docs
+            and self._include_version_openapi_route
+            and self._redoc_url is not None
+            and openapi_url is not None
+        ):
             self._add_redoc_route(router, title, version_prefix, self._redoc_url, openapi_url)
 
     def _collect_versioned_tags(self, router: APIRouter) -> list[dict[str, Any]]:
@@ -634,9 +644,9 @@ class RouterVersioner:
 
                 if self._include_version_openapi_route and self._app.openapi_url is not None:
                     version_model["openapi_url"] = f"{root_path}{version_prefix}{self._app.openapi_url}"
-                if self._include_version_docs and self._docs_url is not None:
+                if self._include_version_docs and self._include_version_openapi_route and self._docs_url is not None:
                     version_model["swagger_url"] = f"{root_path}{version_prefix}{self._docs_url}"
-                if self._include_version_docs and self._redoc_url is not None:
+                if self._include_version_docs and self._include_version_openapi_route and self._redoc_url is not None:
                     version_model["redoc_url"] = f"{root_path}{version_prefix}{self._redoc_url}"
 
                 version_models.append(version_model)
