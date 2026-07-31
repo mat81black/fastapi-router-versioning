@@ -644,24 +644,42 @@ class RouterVersioner:
             versioned_openapi_url = f"{root_path}{version_prefix}{openapi_url}"
             return get_redoc_html(openapi_url=versioned_openapi_url, title=title, **redoc_asset_kwargs)
 
+    def _build_version_models(self, versions: list[VersionT], root_path: str) -> list[dict[str, Any]]:
+        version_models: list[dict[str, Any]] = []
+        for version in versions:
+            version_prefix = self._format_string(self._prefix_format, version)
+            doc_version_str = self._format_string(self._semantic_version_format, version)
+
+            version_model = {"version": doc_version_str}
+
+            if self._include_version_openapi_route and self._app.openapi_url is not None:
+                version_model["openapi_url"] = f"{root_path}{version_prefix}{self._app.openapi_url}"
+            if self._include_version_docs and self._include_version_openapi_route and self._docs_url is not None:
+                version_model["swagger_url"] = f"{root_path}{version_prefix}{self._docs_url}"
+            if self._include_version_docs and self._include_version_openapi_route and self._redoc_url is not None:
+                version_model["redoc_url"] = f"{root_path}{version_prefix}{self._redoc_url}"
+
+            version_models.append(version_model)
+
+        return version_models
+
     def _add_versions_route(self, versions: list[VersionT]) -> None:
+        providers: list[Callable[[str], list[dict[str, Any]]]] | None = getattr(
+            self._app.state, "_router_versioner_version_providers", None
+        )
+        is_first_provider = providers is None
+        if providers is None:
+            providers = []
+            self._app.state._router_versioner_version_providers = providers
+        providers.append(lambda root_path: self._build_version_models(versions, root_path))
+
+        if not is_first_provider:
+            return
+
         @self._app.get("/versions", tags=["Versions"], response_class=JSONResponse)
         def get_versions(request: Request) -> dict[str, Any]:
             root_path = request.scope.get("root_path", "").rstrip("/")
             version_models: list[dict[str, Any]] = []
-            for version in versions:
-                version_prefix = self._format_string(self._prefix_format, version)
-                doc_version_str = self._format_string(self._semantic_version_format, version)
-
-                version_model = {"version": doc_version_str}
-
-                if self._include_version_openapi_route and self._app.openapi_url is not None:
-                    version_model["openapi_url"] = f"{root_path}{version_prefix}{self._app.openapi_url}"
-                if self._include_version_docs and self._include_version_openapi_route and self._docs_url is not None:
-                    version_model["swagger_url"] = f"{root_path}{version_prefix}{self._docs_url}"
-                if self._include_version_docs and self._include_version_openapi_route and self._redoc_url is not None:
-                    version_model["redoc_url"] = f"{root_path}{version_prefix}{self._redoc_url}"
-
-                version_models.append(version_model)
-
+            for provider in providers:
+                version_models.extend(provider(root_path))
             return {"versions": version_models}
