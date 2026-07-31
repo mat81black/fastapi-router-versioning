@@ -4,6 +4,7 @@
 
 ### Fixes
 
+* 🐛 Fix OpenAPI schema caching to handle /latest alias independently. PR [#57](https://github.com/mat81black/fastapi-router-versioning/pull/57) by [@mat81black](https://github.com/mat81black).
 * 🐛 Fix include_version_openapi_route not disabling docs UIs. PR [#55](https://github.com/mat81black/fastapi-router-versioning/pull/55) by [@mat81black](https://github.com/mat81black).
 * 🐛 Fix duplicate route registration for multi-method endpoints. PR [#54](https://github.com/mat81black/fastapi-router-versioning/pull/54) by [@mat81black](https://github.com/mat81black).
 * 🐛 Fix deprecation never becoming observable when deprecate_in is the only lifecycle change. PR [#53](https://github.com/mat81black/fastapi-router-versioning/pull/53) by [@mat81black](https://github.com/mat81black).
