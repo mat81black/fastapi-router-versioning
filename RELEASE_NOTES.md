@@ -11,6 +11,10 @@
 * 🐛 Fix deprecation never becoming observable when deprecate_in is the only lifecycle change. PR [#53](https://github.com/mat81black/fastapi-router-versioning/pull/53) by [@mat81black](https://github.com/mat81black).
 * 🐛 Fix route removal deleting its replacement instead of the removed route. PR [#52](https://github.com/mat81black/fastapi-router-versioning/pull/52) by [@mat81black](https://github.com/mat81black).
 
+### Refactors
+
+* 🐛 Simplify `versionize()` error handling and remove rollback logic. PR [#59](https://github.com/mat81black/fastapi-router-versioning/pull/59) by [@mat81black](https://github.com/mat81black).
+
 ## 1.0.0 (2026-07-28)
 
 🎉 First stable release of fastapi-router-versioning.
