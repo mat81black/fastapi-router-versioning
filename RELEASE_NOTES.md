@@ -2,6 +2,10 @@
 
 ## Latest Changes
 
+### Fixes
+
+* 🐛 Fix route removal deleting its replacement instead of the removed route. PR [#52](https://github.com/mat81black/fastapi-router-versioning/pull/52) by [@mat81black](https://github.com/mat81black).
+
 ## 1.0.0 (2026-07-28)
 
 🎉 First stable release of fastapi-router-versioning.
