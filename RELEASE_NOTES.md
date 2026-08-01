@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+## 1.0.1 (2026-08-01)
+
 ### Fixes
 
 * 🐛 Fix missing OpenAPI validation in docs URL checks when versioning is enabled. PR [#61](https://github.com/mat81black/fastapi-router-versioning/pull/61) by [@mat81black](https://github.com/mat81black).
