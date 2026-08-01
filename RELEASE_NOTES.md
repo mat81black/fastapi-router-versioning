@@ -19,6 +19,7 @@
 
 ### Docs
 
+* 📝 Update README with examples for permanent deprecation, multi-method takeover, and shared `/versions` behavior. PR [#63](https://github.com/mat81black/fastapi-router-versioning/pull/63) by [@mat81black](https://github.com/mat81black).
 * ♻️ Add permanent deprecation and multi-method takeover examples to semver_app. PR [#62](https://github.com/mat81black/fastapi-router-versioning/pull/62) by [@mat81black](https://github.com/mat81black).
 
 ## 1.0.0 (2026-07-28)
