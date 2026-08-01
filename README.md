@@ -119,6 +119,9 @@ def legacy_route():
 | v2.0    | yes               | **yes**            |
 | v3.0    | no                | n/a                |
 
+`remove_in` is optional: `deprecate_in` alone marks a route deprecated from that version
+onward with no planned removal, staying available (and deprecated) in every later version.
+
 A route without `@api_version` isn't excluded, it falls back to `default_version`
 (`(1, 0)` for SemVer, `"1"` for CalVer, unless overridden).
 
@@ -130,6 +133,11 @@ ever turns deprecation *on* for versions at or after its boundary, it never turn
 shows as deprecated in every version, including ones before `deprecate_in`'s boundary.
 Use one or the other: `deprecated=True` for an unconditional, version-independent flag,
 `deprecate_in` for a per-version lifecycle.
+
+A route with `methods=["GET", "POST"]` can have just one of its methods taken over by a
+dedicated route in a later version; the other method keeps being served by the original
+route. See [`semver_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/semver_app.py)
+for a working example.
 
 ---
 
@@ -220,6 +228,10 @@ GET /versions
   ]
 }
 ```
+
+If several `RouterVersioner` instances share one app and all set `include_versions_route=True`,
+`/versions` is mounted once and lists every instance's versions together, instead of the
+first instance shadowing the rest (see [Multiple routers](#multiple-routers)).
 
 ### Custom URL format
 
@@ -391,7 +403,9 @@ pass them all to one `RouterVersioner` via `routers=[...]` instead (see
 If you do share an app across instances, one rule is enforced for you: every instance needs
 its own `prefix_format`/`latest_prefix`. Two instances that resolve to the same prefix would
 otherwise overwrite each other's docs/openapi routes at the same path; this raises
-`RuntimeError`.
+`RuntimeError`. `/versions` (see [Version discovery endpoint](#version-discovery-endpoint))
+doesn't need this coordination: every instance's contribution is aggregated into the same
+endpoint automatically.
 
 For modules that genuinely don't need to coordinate at all, mount them as separate FastAPI
 sub-applications instead (next section).
