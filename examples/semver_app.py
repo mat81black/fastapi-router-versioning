@@ -47,6 +47,31 @@ def future_route() -> dict[str, str]:
     return {"status": "active", "message": "Welcome to v3.0!"}
 
 
+# 5. Introduced in v1.0, deprecated in v2.0, with no remove_in: it stays deprecated forever,
+# there's no removal planned.
+@router.get("/legacy-notice")
+@api_version((1, 0), deprecate_in=(2, 0))
+def legacy_notice_route() -> dict[str, str]:
+    return {"status": "deprecated", "message": "I was deprecated in v2.0, but I'm never removed."}
+
+
+# 6. A single route handling both GET and POST from v1.0. In v2.0, a dedicated route takes
+# over POST alone; GET keeps being served by this same handler in both versions.
+# FastAPI warns about a duplicate operation ID for this route regardless of versioning
+# (reproducible with plain FastAPI too); it's a cosmetic quirk of multi-method routes, safe
+# to ignore here.
+@router.api_route("/settings", methods=["GET", "POST"])
+@api_version((1, 0))
+def settings_route() -> dict[str, str]:
+    return {"handler": "settings_v1", "message": "I handle both GET and POST."}
+
+
+@router.post("/settings")
+@api_version((2, 0))
+def settings_post_v2() -> dict[str, str]:
+    return {"handler": "settings_post_v2", "message": "I took over POST /settings from v2.0."}
+
+
 # POST /items with an invalid "quantity" (e.g. "not-a-number") returns FastAPI's
 # default 422 validation error.
 @router.post("/items")

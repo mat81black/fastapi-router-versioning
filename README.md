@@ -440,7 +440,7 @@ issue and start it again.
 
 | File | What it shows |
 |---|---|
-| [`semver_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/semver_app.py) | Full SemVer lifecycle: introduce, deprecate, remove |
+| [`semver_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/semver_app.py) | Full SemVer lifecycle: introduce, deprecate, remove, permanent deprecation, multi-method route with partial takeover |
 | [`calver_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/calver_app.py) | Same lifecycle, CalVer date strings instead |
 | [`semver_major_only_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/semver_major_only_app.py) | Major-only URLs (`/v1`, `/v2`) via `prefix_format` |
 | [`webhook_versioning_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/webhook_versioning_app.py) | Per-version webhook definitions via `webhook_routers` |
