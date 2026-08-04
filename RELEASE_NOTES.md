@@ -4,6 +4,7 @@
 
 ### Internal
 
+* ⬆ Bump the python-packages group with 5 updates. PR [#66](https://github.com/mat81black/fastapi-router-versioning/pull/66) by [@dependabot[bot]](https://github.com/apps/dependabot).
 * ⬆ Bump zizmorcore/zizmor-action from 0.6.0 to 0.6.1 in the github-actions group. PR [#65](https://github.com/mat81black/fastapi-router-versioning/pull/65) by [@dependabot[bot]](https://github.com/apps/dependabot).
 
 ## 1.0.1 (2026-08-01)
