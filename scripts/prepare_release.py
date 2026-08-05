@@ -128,10 +128,16 @@ def prepare(
     release_notes_content = release_notes_file.read_text()
     version = bump_version(get_current_version(version_file_content, version_file), bump)
 
-    version_file.write_text(update_version_file(version_file_content, version, version_file))
-    release_notes_file.write_text(
-        update_release_notes(release_notes_content, version, parsed_release_date, release_notes_file)
+    # Compute both new file contents before writing either one, so a failure in
+    # either update (e.g. a duplicate release notes section) never leaves the
+    # version file bumped without a matching release notes entry, or vice versa.
+    new_version_file_content = update_version_file(version_file_content, version, version_file)
+    new_release_notes_content = update_release_notes(
+        release_notes_content, version, parsed_release_date, release_notes_file
     )
+
+    version_file.write_text(new_version_file_content)
+    release_notes_file.write_text(new_release_notes_content)
 
     typer.echo(f"Prepared release {version} ({parsed_release_date.isoformat()})")
 
