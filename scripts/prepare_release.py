@@ -38,7 +38,9 @@ def bump_version(version: str, bump: BumpType) -> str:
         return f"{major + 1}.0.0"
     if bump == "minor":
         return f"{major}.{minor + 1}.0"
-    return f"{major}.{minor}.{patch + 1}"
+    if bump == "patch":
+        return f"{major}.{minor}.{patch + 1}"
+    raise ValueError(f"Invalid bump type: {bump!r}. Expected 'major', 'minor', or 'patch'.")
 
 
 def update_version_file(content: str, version: str, version_file: Path) -> str:

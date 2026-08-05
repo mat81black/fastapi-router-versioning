@@ -6,7 +6,14 @@ import pytest
 
 from typer.testing import CliRunner
 
-from scripts.prepare_release import app
+from scripts.prepare_release import (
+    app,
+    bump_version,
+    get_current_version,
+    get_release_notes_body,
+    parse_version,
+    update_version_file,
+)
 
 runner = CliRunner()
 
@@ -26,6 +33,34 @@ def notes_file(tmp_path: Path) -> Path:
     f = tmp_path / "RELEASE_NOTES.md"
     f.write_text(NOTES_TEMPLATE)
     return f
+
+
+# ---------------------------------------------------------------------------
+# parse_version / get_current_version / bump_version (unit-level error paths)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_version_rejects_malformed_string() -> None:
+    with pytest.raises(ValueError, match="Invalid version: 'not-a-version'"):
+        parse_version("not-a-version")
+
+
+def test_get_current_version_raises_when_no_assignment_found(tmp_path: Path) -> None:
+    f = tmp_path / "__init__.py"
+    with pytest.raises(RuntimeError, match="found 0"):
+        get_current_version("no version assignment here\n", f)
+
+
+def test_get_current_version_raises_when_multiple_assignments_found(tmp_path: Path) -> None:
+    f = tmp_path / "__init__.py"
+    content = '__version__ = "0.1.0"\n__version__ = "0.2.0"\n'
+    with pytest.raises(RuntimeError, match="found 2"):
+        get_current_version(content, f)
+
+
+def test_bump_version_rejects_invalid_bump_type() -> None:
+    with pytest.raises(ValueError, match="Invalid bump type: 'sideways'"):
+        bump_version("1.0.0", "sideways")  # type: ignore
 
 
 # ---------------------------------------------------------------------------
@@ -115,8 +150,6 @@ def test_prepare_version_must_increase(version_file: Path, notes_file: Path) -> 
     # To trigger the guard, manually set version higher than what bump produces.
     version_file.write_text(INIT_TEMPLATE.format(version="0.2.0"))
     # writing 0.2.0 again via a fake bump isn't easy via CLI, so test the helper directly
-    from scripts.prepare_release import update_version_file
-
     content = version_file.read_text()
     with pytest.raises(RuntimeError, match="must be greater than"):
         update_version_file(content, "0.2.0", version_file)
@@ -153,6 +186,8 @@ def test_prepare_section_already_exists(version_file: Path, notes_file: Path) ->
         ],
     )
     assert result.exit_code != 0
+    assert isinstance(result.exception, RuntimeError)
+    assert "already contain a section" in str(result.exception)
     # The version file must stay untouched: writing it before the release notes
     # update had failed would leave a bumped version with no matching notes entry.
     assert version_file.read_text() == INIT_TEMPLATE.format(version="0.1.0")
@@ -166,6 +201,9 @@ def test_prepare_notes_wrong_header(version_file: Path, tmp_path: Path) -> None:
         ["prepare", "minor", "--version-file", str(version_file), "--release-notes-file", str(bad_notes)],
     )
     assert result.exit_code != 0
+    assert isinstance(result.exception, RuntimeError)
+    assert "must start with" in str(result.exception)
+    assert "# Release Notes" in str(result.exception)
 
 
 def test_prepare_notes_missing_latest_changes(version_file: Path, tmp_path: Path) -> None:
@@ -176,6 +214,9 @@ def test_prepare_notes_missing_latest_changes(version_file: Path, tmp_path: Path
         ["prepare", "minor", "--version-file", str(version_file), "--release-notes-file", str(bad_notes)],
     )
     assert result.exit_code != 0
+    assert isinstance(result.exception, RuntimeError)
+    assert "must start with" in str(result.exception)
+    assert "Latest Changes" in str(result.exception)
 
 
 # ---------------------------------------------------------------------------
@@ -202,6 +243,8 @@ def test_release_notes_missing_section(version_file: Path, tmp_path: Path) -> No
         ["release-notes", "--version-file", str(version_file), "--release-notes-file", str(notes)],
     )
     assert result.exit_code != 0
+    assert isinstance(result.exception, RuntimeError)
+    assert "Could not find release notes section for 0.1.0" in str(result.exception)
 
 
 def test_release_notes_empty_section(version_file: Path, tmp_path: Path) -> None:
@@ -212,3 +255,21 @@ def test_release_notes_empty_section(version_file: Path, tmp_path: Path) -> None
         ["release-notes", "--version-file", str(version_file), "--release-notes-file", str(notes)],
     )
     assert result.exit_code != 0
+    assert isinstance(result.exception, RuntimeError)
+    assert "is empty" in str(result.exception)
+
+
+def test_get_release_notes_body_stops_at_next_version_heading(tmp_path: Path) -> None:
+    notes_file = tmp_path / "RELEASE_NOTES.md"
+    content = (
+        "# Release Notes\n\n"
+        "## Latest Changes\n\n"
+        "## 0.3.0 (2026-03-01)\n\n"
+        "Third release notes.\n\n"
+        "## 0.2.0 (2026-02-01)\n\n"
+        "Second release notes.\n\n"
+        "## 0.1.0 (2026-01-01)\n\n"
+        "First release notes.\n"
+    )
+
+    assert get_release_notes_body(content, "0.2.0", notes_file) == "Second release notes.\n"
