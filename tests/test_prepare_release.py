@@ -153,6 +153,9 @@ def test_prepare_section_already_exists(version_file: Path, notes_file: Path) ->
         ],
     )
     assert result.exit_code != 0
+    # The version file must stay untouched: writing it before the release notes
+    # update had failed would leave a bumped version with no matching notes entry.
+    assert version_file.read_text() == INIT_TEMPLATE.format(version="0.1.0")
 
 
 def test_prepare_notes_wrong_header(version_file: Path, tmp_path: Path) -> None:
