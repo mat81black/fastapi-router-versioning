@@ -4,6 +4,7 @@
 
 ### Internal
 
+* 🐛 Fix partial release state when release notes write fails. PR [#72](https://github.com/mat81black/fastapi-router-versioning/pull/72) by [@mat81black](https://github.com/mat81black).
 * 🐛 Reject invalid bump types and cover repare_release's untested error paths. PR [#71](https://github.com/mat81black/fastapi-router-versioning/pull/71) by [@mat81black](https://github.com/mat81black).
 * 🐛 Fix partial release state when release notes update fails. PR [#70](https://github.com/mat81black/fastapi-router-versioning/pull/70) by [@mat81black](https://github.com/mat81black).
 * ⬆️ Bump tiangolo/latest-changes to 0.7.1. PR [#69](https://github.com/mat81black/fastapi-router-versioning/pull/69) by [@mat81black](https://github.com/mat81black).
