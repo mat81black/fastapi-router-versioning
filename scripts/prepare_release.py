@@ -139,7 +139,13 @@ def prepare(
     )
 
     version_file.write_text(new_version_file_content)
-    release_notes_file.write_text(new_release_notes_content)
+    try:
+        release_notes_file.write_text(new_release_notes_content)
+    except OSError:
+        # Roll back the already-written version file so a failure here never leaves it bumped
+        # without a matching release notes entry.
+        version_file.write_text(version_file_content)
+        raise
 
     typer.echo(f"Prepared release {version} ({parsed_release_date.isoformat()})")
 
