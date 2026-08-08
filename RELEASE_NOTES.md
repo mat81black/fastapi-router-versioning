@@ -4,6 +4,7 @@
 
 ### Internal
 
+* 🐛 Fix release date defaulting to the date the script was imported. PR [#73](https://github.com/mat81black/fastapi-router-versioning/pull/73) by [@mat81black](https://github.com/mat81black).
 * 🐛 Fix partial release state when release notes write fails. PR [#72](https://github.com/mat81black/fastapi-router-versioning/pull/72) by [@mat81black](https://github.com/mat81black).
 * 🐛 Reject invalid bump types and cover repare_release's untested error paths. PR [#71](https://github.com/mat81black/fastapi-router-versioning/pull/71) by [@mat81black](https://github.com/mat81black).
 * 🐛 Fix partial release state when release notes update fails. PR [#70](https://github.com/mat81black/fastapi-router-versioning/pull/70) by [@mat81black](https://github.com/mat81black).
