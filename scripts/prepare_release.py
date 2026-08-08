@@ -116,13 +116,13 @@ def prepare(
         ),
     ],
     release_date: Annotated[
-        str,
+        str | None,
         typer.Option(
             "--date",
             envvar="PREPARE_RELEASE_DATE",
             help="Release date in YYYY-MM-DD format. Defaults to today.",
         ),
-    ] = date.today().isoformat(),
+    ] = None,
 ) -> None:
     parsed_release_date = date.fromisoformat(release_date or date.today().isoformat())
 

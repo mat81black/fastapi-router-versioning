@@ -1,5 +1,6 @@
 """Tests for scripts/prepare_release.py."""
 
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -109,6 +110,23 @@ def test_prepare_bump(
     )
     assert result.exit_code == 0, result.output
     assert f'__version__ = "{expected}"' in version_file.read_text()
+
+
+def test_prepare_defaults_to_today_when_date_omitted(version_file: Path, notes_file: Path) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "prepare",
+            "minor",
+            "--version-file",
+            str(version_file),
+            "--release-notes-file",
+            str(notes_file),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    today = date.today().isoformat()
+    assert f"## 0.2.0 ({today})" in notes_file.read_text()
 
 
 def test_prepare_updates_release_notes(version_file: Path, notes_file: Path) -> None:
