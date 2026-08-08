@@ -1,6 +1,7 @@
 """Tests for scripts/prepare_release.py."""
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -191,6 +192,40 @@ def test_prepare_section_already_exists(version_file: Path, notes_file: Path) ->
     # The version file must stay untouched: writing it before the release notes
     # update had failed would leave a bumped version with no matching notes entry.
     assert version_file.read_text() == INIT_TEMPLATE.format(version="0.1.0")
+
+
+def test_prepare_rolls_back_version_file_when_release_notes_write_fails(version_file: Path, notes_file: Path) -> None:
+    original_version_content = version_file.read_text()
+    original_write_text = Path.write_text
+    calls = {"n": 0}
+
+    def flaky_write_text(self: Path, *args: object, **kwargs: object) -> int:
+        calls["n"] += 1
+        if calls["n"] == 2:  # the release notes file is the second write
+            raise OSError("disk full (simulated)")
+        return original_write_text(self, *args, **kwargs)  # type: ignore[arg-type]
+
+    with patch.object(Path, "write_text", flaky_write_text):
+        result = runner.invoke(
+            app,
+            [
+                "prepare",
+                "minor",
+                "--version-file",
+                str(version_file),
+                "--release-notes-file",
+                str(notes_file),
+                "--date",
+                "2026-01-01",
+            ],
+        )
+
+    assert result.exit_code != 0
+    assert isinstance(result.exception, OSError)
+    # The version file must be rolled back: it was already written before the
+    # release notes write failed, and would otherwise stay bumped with no matching entry.
+    assert version_file.read_text() == original_version_content
+    assert notes_file.read_text() == NOTES_TEMPLATE
 
 
 def test_prepare_notes_wrong_header(version_file: Path, tmp_path: Path) -> None:
