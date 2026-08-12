@@ -4,6 +4,7 @@
 
 ### Fixes
 
+* 🐛 Read route attributes from the merged RouteContext instead of the original route. PR [#79](https://github.com/mat81black/fastapi-router-versioning/pull/79) by [@mat81black](https://github.com/mat81black).
 * 🐛 Preserve custom route_class when mounting versioned routes. PR [#78](https://github.com/mat81black/fastapi-router-versioning/pull/78) by [@mat81black](https://github.com/mat81black).
 
 ## 1.0.2 (2026-08-12)
