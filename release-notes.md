@@ -4,6 +4,7 @@
 
 ### Internal
 
+* ♻️ Standardize examples with a run instruction docstring, drop the main blocks. PR [#75](https://github.com/mat81black/fastapi-router-versioning/pull/75) by [@mat81black](https://github.com/mat81black).
 * 👷 Sync CI, pre-commit, and release scripts workflows with the latest template. PR [#74](https://github.com/mat81black/fastapi-router-versioning/pull/74) by [@mat81black](https://github.com/mat81black).
 * 🐛 Fix release date defaulting to the date the script was imported. PR [#73](https://github.com/mat81black/fastapi-router-versioning/pull/73) by [@mat81black](https://github.com/mat81black).
 * 🐛 Fix partial release state when release notes write fails. PR [#72](https://github.com/mat81black/fastapi-router-versioning/pull/72) by [@mat81black](https://github.com/mat81black).
