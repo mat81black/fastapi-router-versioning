@@ -5,6 +5,10 @@ Shows how to mount independently versioned modules as separate FastAPI
 sub-applications via app.mount() — each with its own RouterVersioner, docs,
 and OpenAPI schema. RouterVersioner already threads the ASGI root_path through
 docs/openapi URLs automatically, so no extra configuration is needed.
+
+Run:
+
+    uvicorn examples.mounted_subapps_app:main_app --reload
 """
 
 from fastapi import APIRouter, FastAPI
@@ -66,9 +70,3 @@ RouterVersioner(app=orders_app, routers=orders_router, version_format=VersionFor
 
 main_app.mount("/admin", admin_app)
 main_app.mount("/orders", orders_app)
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(main_app, host="127.0.0.1", port=8009)

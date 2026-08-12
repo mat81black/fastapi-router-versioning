@@ -1,3 +1,14 @@
+"""
+SemVer major-only example.
+
+Demonstrates major-only versioning via prefix_format: /v1, /v2, /v3 instead of the
+default /v1_0, /v2_0.
+
+Run:
+
+    uvicorn examples.semver_major_only_app:app --reload
+"""
+
 from fastapi import APIRouter, FastAPI
 from pydantic import BaseModel
 
@@ -65,8 +76,3 @@ versioner = RouterVersioner(
     include_versions_route=True,
 )
 versioner.versionize()
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="127.0.0.1", port=8002)

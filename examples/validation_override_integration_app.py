@@ -10,6 +10,10 @@ fastapi-validation-override package. This example wires the two together:
 2. openapi_hook re-applies patch_422_responses() to the schema RouterVersioner
    generates for each version, so every versioned /vX_Y/openapi.json reflects
    the same status code too.
+
+Run:
+
+    uvicorn examples.validation_override_integration_app:app --reload
 """
 
 from typing import Any
@@ -49,8 +53,3 @@ versioner = RouterVersioner(
     openapi_hook=versioning_openapi_hook,
 )
 versioner.versionize()
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="127.0.0.1", port=8010)

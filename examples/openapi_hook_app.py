@@ -1,3 +1,14 @@
+"""
+OpenAPI hook example.
+
+Demonstrates per-version OpenAPI schema customization via openapi_hook — adding a logo to
+every version's schema, plus version-specific description text.
+
+Run:
+
+    uvicorn examples.openapi_hook_app:app --reload
+"""
+
 from typing import Any
 
 from fastapi import APIRouter, FastAPI
@@ -68,8 +79,3 @@ versioner = RouterVersioner(
     openapi_hook=my_openapi_hook,
 )
 versioner.versionize()
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="127.0.0.1", port=8004)

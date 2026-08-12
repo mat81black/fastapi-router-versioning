@@ -1,3 +1,14 @@
+"""
+CalVer lifecycle example.
+
+Full endpoint lifecycle (introduce, deprecate, remove) using Calendar Versioning strings
+instead of SemVer tuples.
+
+Run:
+
+    uvicorn examples.calver_app:app --reload
+"""
+
 from fastapi import APIRouter, FastAPI
 from pydantic import BaseModel
 
@@ -63,8 +74,3 @@ versioner = RouterVersioner(
     include_versions_route=True,
 )
 versioner.versionize()
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="127.0.0.1", port=8001)

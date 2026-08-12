@@ -5,6 +5,10 @@ Shows how to version routes split across multiple APIRouters — the typical
 real-world pattern where each domain (users, products, …) lives in its own
 router/module. Pass them as a list to RouterVersioner and they are all
 versioned together under a single prefix tree.
+
+Run:
+
+    uvicorn examples.multi_router_app:app --reload
 """
 
 from fastapi import APIRouter, FastAPI
@@ -66,8 +70,3 @@ versioner = RouterVersioner(
     include_versions_route=True,
 )
 versioner.versionize()
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="127.0.0.1", port=8003)
