@@ -262,6 +262,53 @@ def test_custom_route_class_is_preserved_on_versioned_routes() -> None:
     assert client.get("/v1_0/admin/users", headers={"x-api-key": "secret-internal-key"}).status_code == 200
 
 
+def test_include_router_schema_visibility_override_is_preserved_on_versioned_routes() -> None:
+    """include_router(..., include_in_schema=False) hides every route of the included router
+    from the OpenAPI schema without affecting routing. That override must still hold once the
+    parent router is versioned, not silently revert to the route's own declared value."""
+    internal_router = APIRouter()
+
+    @internal_router.get("/debug/internal-state")
+    @api_version((1, 0))
+    def debug_state() -> dict[str, str]:
+        return {"secret": "internal debug info"}
+
+    parent_router = APIRouter()
+    parent_router.include_router(internal_router, include_in_schema=False)
+
+    app = FastAPI()
+    RouterVersioner(app=app, routers=parent_router, version_format=VersionFormat.SEMVER).versionize()
+
+    client = TestClient(app)
+    schema = client.get("/v1_0/openapi.json").json()
+    assert "/v1_0/debug/internal-state" not in schema["paths"]
+    assert client.get("/v1_0/debug/internal-state").status_code == 200
+
+
+def test_include_router_deprecated_and_responses_overrides_are_preserved_on_versioned_routes() -> None:
+    """FastAPI's own "Bigger Applications" tutorial passes deprecated and responses to
+    include_router() to apply them to every route of the included router (e.g.
+    responses={418: ...}). Those merged values must survive versioning too."""
+    internal_router = APIRouter()
+
+    @internal_router.get("/admin")
+    @api_version((1, 0))
+    def admin() -> dict[str, bool]:
+        return {"ok": True}
+
+    parent_router = APIRouter()
+    parent_router.include_router(internal_router, deprecated=True, responses={418: {"description": "I'm a teapot"}})
+
+    app = FastAPI()
+    RouterVersioner(app=app, routers=parent_router, version_format=VersionFormat.SEMVER).versionize()
+
+    client = TestClient(app)
+    assert client.get("/v1_0/admin").json() == {"ok": True}
+    operation = client.get("/v1_0/openapi.json").json()["paths"]["/v1_0/admin"]["get"]
+    assert operation["deprecated"] is True
+    assert "418" in operation["responses"]
+
+
 def test_versioner_callback() -> None:
     """The callback is invoked once per versioned router, including the latest_prefix alias."""
     app = FastAPI()

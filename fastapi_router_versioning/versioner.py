@@ -463,9 +463,6 @@ class RouterVersioner:
     def _add_route_to_router(
         self, route: Any, router: APIRouter, version: VersionT, active_methods: set[str] | None = None
     ) -> None:
-        # Read attributes from the original route, not the RouteContext proxy. The proxy
-        # (FastAPI >= 0.137.2) only merges path/tags/deps; other fields such as
-        # response_model, status_code, and operation_id would be silently lost.
         source_route = self._unwrap_route(route)
         add_method: Callable[..., Any]
 
@@ -477,7 +474,7 @@ class RouterVersioner:
             raise TypeError(f"Unsupported route type: {type(source_route).__name__}")
 
         valid_params = inspect.signature(add_method).parameters.keys()
-        filtered_kwargs = {k: getattr(source_route, k) for k in valid_params if hasattr(source_route, k)}
+        filtered_kwargs = {k: getattr(route, k) for k in valid_params if hasattr(route, k)}
         filtered_kwargs.setdefault("endpoint", source_route.endpoint)
         # route_class_override isn't an attribute of the route instance (add_api_route consumes
         # it once, at construction time), so the comprehension above never captures it: without
@@ -485,10 +482,6 @@ class RouterVersioner:
         # every route as a plain APIRoute, dropping whatever get_route_handler() overrides.
         if isinstance(source_route, APIRoute):
             filtered_kwargs["route_class_override"] = type(source_route)
-        # Override path/tags/deps with the merged values from RouteContext when present.
-        for merged_attr in ("path", "tags", "dependencies"):
-            if hasattr(route, merged_attr) and merged_attr in valid_params:
-                filtered_kwargs[merged_attr] = getattr(route, merged_attr)
         # A sibling route may have taken over some of this route's original methods at this
         # version: mount only the methods still assigned to it, not its full original set.
         if active_methods is not None and "methods" in valid_params:
