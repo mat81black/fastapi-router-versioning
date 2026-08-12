@@ -1,3 +1,14 @@
+"""
+Versioned webhooks example.
+
+Demonstrates per-version webhook definitions via webhook_routers — webhook payloads evolve
+and get removed across versions using the same @api_version lifecycle as regular routes.
+
+Run:
+
+    uvicorn examples.webhook_versioning_app:app --reload
+"""
+
 from fastapi import APIRouter, FastAPI
 from pydantic import BaseModel
 
@@ -98,8 +109,3 @@ versioner.versionize()
 # Result:
 #   /v1_0/openapi.json  → webhooks: /order-created (v1 payload), /payment-received
 #   /v2_0/openapi.json  → webhooks: /order-created (v2 payload)   ← /payment-received removed
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="127.0.0.1", port=8006)

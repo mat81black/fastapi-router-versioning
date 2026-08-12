@@ -1,3 +1,14 @@
+"""
+SemVer lifecycle example.
+
+Full endpoint lifecycle (introduce, deprecate, remove, permanent deprecation) plus a
+multi-method route with a partial takeover, using Semantic Versioning tuples.
+
+Run:
+
+    uvicorn examples.semver_app:app --reload
+"""
+
 from fastapi import APIRouter, FastAPI
 from pydantic import BaseModel
 
@@ -88,8 +99,3 @@ versioner = RouterVersioner(
     include_versions_route=True,
 )
 versioner.versionize()
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="127.0.0.1", port=8000)
