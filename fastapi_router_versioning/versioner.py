@@ -479,6 +479,12 @@ class RouterVersioner:
         valid_params = inspect.signature(add_method).parameters.keys()
         filtered_kwargs = {k: getattr(source_route, k) for k in valid_params if hasattr(source_route, k)}
         filtered_kwargs.setdefault("endpoint", source_route.endpoint)
+        # route_class_override isn't an attribute of the route instance (add_api_route consumes
+        # it once, at construction time), so the comprehension above never captures it: without
+        # this, a router built with APIRouter(route_class=CustomRoute) would silently remount
+        # every route as a plain APIRoute, dropping whatever get_route_handler() overrides.
+        if isinstance(source_route, APIRoute):
+            filtered_kwargs["route_class_override"] = type(source_route)
         # Override path/tags/deps with the merged values from RouteContext when present.
         for merged_attr in ("path", "tags", "dependencies"):
             if hasattr(route, merged_attr) and merged_attr in valid_params:
