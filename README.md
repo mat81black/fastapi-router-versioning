@@ -468,7 +468,7 @@ issue and start it again.
 
 ## Release Notes
 
-[RELEASE_NOTES](https://github.com/mat81black/fastapi-router-versioning/blob/main/RELEASE_NOTES.md)
+[RELEASE_NOTES](https://github.com/mat81black/fastapi-router-versioning/blob/main/release-notes.md)
 
 ---
 

@@ -38,14 +38,14 @@ repos:
 
       - id: local-mypy
         name: mypy check
-        entry: uv run mypy fastapi_router_versioning
+        entry: uv run mypy fastapi_router_versioning examples
         require_serial: true
         language: unsupported
         pass_filenames: false
 
       - id: local-ty
         name: ty check
-        entry: uv run ty check fastapi_router_versioning
+        entry: uv run ty check fastapi_router_versioning examples
         require_serial: true
         language: unsupported
         pass_filenames: false
