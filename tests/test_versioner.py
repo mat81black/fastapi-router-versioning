@@ -1,9 +1,11 @@
+from collections.abc import Callable
 from typing import Any
 
 import pytest
 
-from fastapi import APIRouter, FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import PlainTextResponse
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from starlette.routing import Route
 
@@ -224,6 +226,40 @@ def test_unsupported_route_type_raises_error() -> None:
             router=router,
             version=(1, 0),
         )
+
+
+def test_custom_route_class_is_preserved_on_versioned_routes() -> None:
+    """A router built with APIRouter(route_class=CustomRoute) — FastAPI's documented pattern
+    for request/response interception via APIRoute.get_route_handler(), e.g. for auth checks
+    run before the endpoint — must keep using that class once versioned, not silently fall
+    back to plain APIRoute and drop whatever the custom class does.
+    """
+
+    class RequireApiKeyRoute(APIRoute):
+        def get_route_handler(self) -> Callable[[Request], Any]:
+            original_handler = super().get_route_handler()
+
+            async def custom_handler(request: Request) -> Response:
+                if request.headers.get("x-api-key") != "secret-internal-key":
+                    raise HTTPException(status_code=403, detail="Missing or invalid API key")
+                return await original_handler(request)
+
+            return custom_handler
+
+    app = FastAPI()
+    router = APIRouter(route_class=RequireApiKeyRoute)
+
+    @router.get("/admin/users")
+    @api_version((1, 0))
+    def list_admin_users() -> dict[str, list[str]]:
+        return {"users": ["alice", "bob"]}
+
+    RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER).versionize()
+
+    client = TestClient(app)
+    assert client.get("/v1_0/admin/users").status_code == 403
+    assert client.get("/v1_0/admin/users", headers={"x-api-key": "wrong"}).status_code == 403
+    assert client.get("/v1_0/admin/users", headers={"x-api-key": "secret-internal-key"}).status_code == 200
 
 
 def test_versioner_callback() -> None:
