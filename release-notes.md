@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+## 1.0.2 (2026-08-12)
+
 ### Internal
 
 * ✅ Cover examples/ with an import-and-schema smoke test and align their run instructions. PR [#76](https://github.com/mat81black/fastapi-router-versioning/pull/76) by [@mat81black](https://github.com/mat81black).
