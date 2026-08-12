@@ -31,5 +31,6 @@ Thumbs.db
 *.tmp
 
 # Local environment
-.env
 .run/
+/CLAUDE.md
+/.claude/

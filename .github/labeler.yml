@@ -3,7 +3,7 @@ docs:
     - changed-files:
       - any-glob-to-any-file:
         - README.md
-        - RELEASE_NOTES.md
+        - release-notes.md
       - all-globs-to-all-files:
         - '!fastapi_router_versioning/**'
         - '!pyproject.toml'
