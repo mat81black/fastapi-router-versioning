@@ -1,5 +1,5 @@
 from .versioner import RouterVersioner, VersionFormat, VersionT, api_version
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 __all__ = ["RouterVersioner", "api_version", "VersionFormat", "VersionT"]
