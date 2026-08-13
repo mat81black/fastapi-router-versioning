@@ -1192,6 +1192,33 @@ def test_webhook_routers_none_falls_back_to_app_webhooks() -> None:
     assert "/global-event" in schema_v1.get("webhooks", {})
 
 
+def test_webhook_routers_provided_but_empty_does_not_fall_back_to_app_webhooks() -> None:
+    """Providing webhook_routers opts into per-version webhook control, even if that router
+    currently defines no webhooks: it must not fall back to global app.webhooks, since that
+    fallback is reserved for webhook_routers=None (not provided at all)."""
+    app = FastAPI()
+
+    @app.webhooks.post("/global-event")
+    def global_webhook(body: dict[str, str]) -> None: ...
+
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items() -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app,
+        routers=router,
+        webhook_routers=APIRouter(),
+        version_format=VersionFormat.SEMVER,
+    ).versionize()
+
+    client = TestClient(app)
+    schema_v1 = client.get("/v1_0/openapi.json").json()
+    assert schema_v1.get("webhooks", {}) == {}
+
+
 def test_webhook_routers_as_list() -> None:
     """webhook_routers accepts a list of APIRouter, not just a single one."""
     app = FastAPI()
