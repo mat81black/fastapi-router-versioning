@@ -4,6 +4,7 @@
 
 ### Fixes
 
+* 🐛 Fix tag metadata missing from versioned schemas when tags use an Enum. PR [#81](https://github.com/mat81black/fastapi-router-versioning/pull/81) by [@mat81black](https://github.com/mat81black).
 * 🐛 Distinguish an unset webhook_routers from one provided but empty. PR [#80](https://github.com/mat81black/fastapi-router-versioning/pull/80) by [@mat81black](https://github.com/mat81black).
 * 🐛 Read route attributes from the merged RouteContext instead of the original route. PR [#79](https://github.com/mat81black/fastapi-router-versioning/pull/79) by [@mat81black](https://github.com/mat81black).
 * 🐛 Preserve custom route_class when mounting versioned routes. PR [#78](https://github.com/mat81black/fastapi-router-versioning/pull/78) by [@mat81black](https://github.com/mat81black).
