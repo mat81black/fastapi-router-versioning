@@ -114,3 +114,13 @@ def test_calver_type_validation_raises_error() -> None:
 
     with pytest.raises(ValueError, match="RouterVersioner expects CALVER"):
         versioner.versionize()
+
+
+def test_calver_default_version_type_validation_raises_error() -> None:
+    """A tuple default_version on a CALVER-configured versioner raises ValueError at
+    construction time, the same way an invalid @api_version on a route does."""
+    app = FastAPI()
+    router = APIRouter()
+
+    with pytest.raises(ValueError, match="RouterVersioner expects CALVER"):
+        RouterVersioner(app=app, routers=router, version_format=VersionFormat.CALVER, default_version=(1, 0))
