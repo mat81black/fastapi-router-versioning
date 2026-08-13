@@ -527,10 +527,10 @@ class RouterVersioner:
     def _collect_versioned_tags(self, router: APIRouter) -> list[dict[str, Any]]:
         if self._app.openapi_tags is None:
             return []
-        tags: set[str | Enum] = set()
+        tags: set[str] = set()
         for route in router.routes:
             if isinstance(route, APIRoute) and isinstance(route.tags, list):
-                tags.update(route.tags)
+                tags.update(tag.value if isinstance(tag, Enum) else tag for tag in route.tags)
         if not tags:
             return []
         return [tag for tag in self._app.openapi_tags if tag["name"] in tags]

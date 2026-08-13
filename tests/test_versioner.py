@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from enum import Enum
 from typing import Any
 
 import pytest
@@ -462,6 +463,35 @@ def test_openapi_tags_filtering_coverage() -> None:
 
     assert len(schema["tags"]) == 1
     assert schema["tags"][0]["name"] == "auth"
+
+
+def test_openapi_tags_filtering_matches_enum_tags() -> None:
+    """FastAPI's own "Tags with Enums" tutorial recommends tags=[Tags.items] where Tags is a
+    plain Enum (not str, Enum): those members aren't equal to their own string value, so tag
+    filtering must normalize them before comparing against openapi_tags[i]["name"].
+    """
+
+    class Tags(Enum):
+        items = "items"
+        users = "users"
+
+    app_tags = [
+        {"name": "items", "description": "Manage items"},
+        {"name": "users", "description": "User management (not used here)"},
+    ]
+    app = FastAPI(openapi_tags=app_tags)
+    router = APIRouter()
+
+    @router.get("/items", tags=[Tags.items])
+    @api_version((1, 0))
+    def get_items() -> list[str]: ...
+
+    RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER).versionize()
+
+    client = TestClient(app)
+    schema = client.get("/v1_0/openapi.json").json()
+
+    assert schema["tags"] == [{"name": "items", "description": "Manage items"}]
 
 
 def test_openapi_hook_is_applied_to_schema() -> None:
