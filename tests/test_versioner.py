@@ -791,6 +791,23 @@ def test_latest_prefix_created_when_final_version_has_no_routes() -> None:
     assert client.get("/latest/data").status_code == 404  # empty version → no routes
 
 
+def test_versionize_on_router_with_no_routes_returns_empty_list() -> None:
+    """A router with no @api_version-decorated routes at all (not even one version boundary)
+    must versionize() to an empty list without raising, and must not mount anything for
+    latest_prefix either — there is no "latest version" to alias."""
+    app = FastAPI()
+    router = APIRouter()
+
+    versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER, latest_prefix="/latest")
+    versions = versioner.versionize()
+
+    assert versions == []
+
+    client = TestClient(app)
+    assert client.get("/latest").status_code == 404
+    assert not any(getattr(r, "path", "").startswith("/latest") for r in app.routes)
+
+
 def test_remove_in_does_not_evict_a_newer_route_at_the_same_path() -> None:
     """remove_in on a superseded route must not evict the route that replaced it.
 
