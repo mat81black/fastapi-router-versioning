@@ -117,3 +117,13 @@ def test_semver_type_validation_raises_error() -> None:
 
     with pytest.raises(ValueError, match="RouterVersioner expects SEMVER"):
         versioner.versionize()
+
+
+def test_semver_default_version_type_validation_raises_error() -> None:
+    """A string default_version on a SEMVER-configured versioner raises ValueError at
+    construction time, the same way an invalid @api_version on a route does."""
+    app = FastAPI()
+    router = APIRouter()
+
+    with pytest.raises(ValueError, match="RouterVersioner expects SEMVER"):
+        RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER, default_version="2025-01-01")
