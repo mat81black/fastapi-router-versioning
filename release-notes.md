@@ -15,6 +15,7 @@
 
 ### Internal
 
+* ♻️ Reorganize versioner tests into docs, lifecycle, webhooks, and errors files. PR [#85](https://github.com/mat81black/fastapi-router-versioning/pull/85) by [@mat81black](https://github.com/mat81black).
 * ✅ Cover versionize() on a router with no routes. PR [#83](https://github.com/mat81black/fastapi-router-versioning/pull/83) by [@mat81black](https://github.com/mat81black).
 * ✅ Cover default_version type validation on construction. PR [#82](https://github.com/mat81black/fastapi-router-versioning/pull/82) by [@mat81black](https://github.com/mat81black).
 
