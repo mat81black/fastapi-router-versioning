@@ -4,6 +4,7 @@ from collections import defaultdict
 from collections.abc import Callable, Iterator
 from enum import Enum
 from typing import Any, TypeAlias, TypeVar
+from weakref import WeakKeyDictionary
 
 import fastapi.openapi.utils
 import fastapi.routing
@@ -30,6 +31,29 @@ _OpenAPICacheKey: TypeAlias = tuple[VersionT, str]
 _ATTR_API_VERSION = "_api_version"
 _ATTR_DEPRECATE_IN = "_deprecate_in_version"
 _ATTR_REMOVE_IN = "_remove_in_version"
+
+
+class _AppRegistry:
+    """Cross-instance bookkeeping for multiple RouterVersioner sharing one app: claimed
+    prefixes (collision detection) and /versions providers (aggregation). Keyed by app in
+    _app_registries below instead of living on app.state, so it's only ever reachable through
+    this module, not through any other code holding a reference to the app.
+    """
+
+    def __init__(self) -> None:
+        self.claimed_prefixes: set[str] = set()
+        self.version_providers: list[Callable[[str], list[dict[str, Any]]]] = []
+
+
+_app_registries: WeakKeyDictionary[FastAPI, _AppRegistry] = WeakKeyDictionary()
+
+
+def _get_app_registry(app: FastAPI) -> _AppRegistry:
+    registry = _app_registries.get(app)
+    if registry is None:
+        registry = _AppRegistry()
+        _app_registries[app] = registry
+    return registry
 
 
 class VersionFormat(str, Enum):
@@ -406,16 +430,11 @@ class RouterVersioner:
     def _check_prefix_available(self, prefix: str, staged_prefixes: set[str]) -> None:
         if prefix in staged_prefixes:
             self._raise_prefix_claimed_by_self(prefix)
-        claimed: set[str] | None = getattr(self._app.state, "_router_versioner_claimed_prefixes", None)
-        if claimed is not None and prefix in claimed:
+        if prefix in _get_app_registry(self._app).claimed_prefixes:
             self._raise_prefix_claimed_by_other(prefix)
 
     def _claim_prefix(self, prefix: str) -> None:
-        claimed: set[str] | None = getattr(self._app.state, "_router_versioner_claimed_prefixes", None)
-        if claimed is None:
-            claimed = set()
-            self._app.state._router_versioner_claimed_prefixes = claimed
-        claimed.add(prefix)
+        _get_app_registry(self._app).claimed_prefixes.add(prefix)
 
     def _resolve_webhooks_for_version(
         self, version: VersionT, webhooks_by_version: dict[VersionT, list[Any]]
@@ -673,13 +692,8 @@ class RouterVersioner:
         return version_models
 
     def _add_versions_route(self, versions: list[VersionT]) -> None:
-        providers: list[Callable[[str], list[dict[str, Any]]]] | None = getattr(
-            self._app.state, "_router_versioner_version_providers", None
-        )
-        is_first_provider = providers is None
-        if providers is None:
-            providers = []
-            self._app.state._router_versioner_version_providers = providers
+        providers = _get_app_registry(self._app).version_providers
+        is_first_provider = not providers
         providers.append(lambda root_path: self._build_version_models(versions, root_path))
 
         if not is_first_provider:

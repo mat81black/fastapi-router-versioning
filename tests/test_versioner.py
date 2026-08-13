@@ -79,6 +79,24 @@ def test_versions_endpoint_aggregates_across_versioners_sharing_an_app() -> None
     assert versions == {"1.0", "2025-01-01"}
 
 
+def test_versionize_does_not_write_to_app_state() -> None:
+    """Cross-instance bookkeeping (prefix collisions, /versions aggregation) must not leak
+    into app.state, a general-purpose namespace any other code holding a reference to the
+    app can read or overwrite; it stays private to this package instead."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def items() -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=router, version_format=VersionFormat.SEMVER, include_versions_route=True
+    ).versionize()
+
+    assert vars(app.state) == {"_state": {}}
+
+
 def test_versions_endpoint_omits_doc_links_when_app_openapi_url_is_none() -> None:
     """FastAPI(openapi_url=None) disables Swagger/ReDoc mounting for every version (see
     _add_version_docs, which requires app.openapi_url is not None). /versions must not
