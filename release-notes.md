@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+## 1.0.3 (2026-08-13)
+
 ### Fixes
 
 * 🐛 Fix tag metadata missing from versioned schemas when tags use an Enum. PR [#81](https://github.com/mat81black/fastapi-router-versioning/pull/81) by [@mat81black](https://github.com/mat81black).
