@@ -420,7 +420,7 @@ class RouterVersioner:
     def _resolve_webhooks_for_version(
         self, version: VersionT, webhooks_by_version: dict[VersionT, list[Any]]
     ) -> list[Any]:
-        if not webhooks_by_version:
+        if self._webhook_routers is None:
             # webhook_routers not provided: fall back to global app.webhooks
             return list(self._app.webhooks.routes)
         if isinstance(version, tuple):
