@@ -9,6 +9,10 @@
 * 🐛 Read route attributes from the merged RouteContext instead of the original route. PR [#79](https://github.com/mat81black/fastapi-router-versioning/pull/79) by [@mat81black](https://github.com/mat81black).
 * 🐛 Preserve custom route_class when mounting versioned routes. PR [#78](https://github.com/mat81black/fastapi-router-versioning/pull/78) by [@mat81black](https://github.com/mat81black).
 
+### Refactors
+
+* ♻️ Move prefix and /versions bookkeeping off app.state into a private registry. PR [#84](https://github.com/mat81black/fastapi-router-versioning/pull/84) by [@mat81black](https://github.com/mat81black).
+
 ### Internal
 
 * ✅ Cover versionize() on a router with no routes. PR [#83](https://github.com/mat81black/fastapi-router-versioning/pull/83) by [@mat81black](https://github.com/mat81black).
