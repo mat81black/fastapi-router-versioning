@@ -2,6 +2,10 @@
 
 ## Latest Changes
 
+### Internal
+
+* 👷 Replace actions/labeler with Latest Changes App auto-labeling. PR [#87](https://github.com/mat81black/fastapi-router-versioning/pull/87) by [@mat81black](https://github.com/mat81black).
+
 ## 1.0.3 (2026-08-13)
 
 ### Fixes
