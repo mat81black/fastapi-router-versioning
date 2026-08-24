@@ -4,6 +4,7 @@
 
 ### Internal
 
+* ⬆ Bump the github-actions group with 2 updates. PR [#89](https://github.com/mat81black/fastapi-router-versioning/pull/89) by [@dependabot[bot]](https://github.com/apps/dependabot).
 * 👷 Replace actions/labeler with Latest Changes App auto-labeling. PR [#87](https://github.com/mat81black/fastapi-router-versioning/pull/87) by [@mat81black](https://github.com/mat81black).
 
 ## 1.0.3 (2026-08-13)
