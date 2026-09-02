@@ -4,6 +4,7 @@
 
 ### Internal
 
+* ⬆ Bump re-actors/alls-green from 1.2.2 to 1.3.0 in the github-actions group. PR [#93](https://github.com/mat81black/fastapi-router-versioning/pull/93) by [@dependabot[bot]](https://github.com/apps/dependabot).
 * ⬆ Bump pre-commit hooks. PR [#92](https://github.com/mat81black/fastapi-router-versioning/pull/92) by [@mat81black](https://github.com/mat81black).
 * ⬆ Bump fastapi from 0.140.0 to 0.141.1. PR [#91](https://github.com/mat81black/fastapi-router-versioning/pull/91) by [@dependabot[bot]](https://github.com/apps/dependabot).
 * ⬆ Bump the python-packages group with 11 updates. PR [#90](https://github.com/mat81black/fastapi-router-versioning/pull/90) by [@dependabot[bot]](https://github.com/apps/dependabot).
