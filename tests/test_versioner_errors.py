@@ -104,6 +104,26 @@ def test_duplicate_latest_prefix_across_versioners_raises() -> None:
         ).versionize()
 
 
+def test_versions_route_path_without_leading_slash_raises() -> None:
+    """versions_route_path is a route path, not a name: it must start with '/'. A missing
+    leading slash is rejected at construction time, before any app mutation."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/items")
+    @api_version((1, 0))
+    def get_items() -> dict[str, str]: ...
+
+    with pytest.raises(ValueError, match="versions_route_path must start with '/'"):
+        RouterVersioner(
+            app=app,
+            routers=router,
+            version_format=VersionFormat.SEMVER,
+            include_versions_route=True,
+            versions_route_path="api-versions",
+        )
+
+
 def test_versionize_callback_failure_is_fatal_and_propagates() -> None:
     """A callback raising partway through versionize() is a fatal, unrecoverable error: it
     must propagate as-is, not be swallowed or wrapped."""
