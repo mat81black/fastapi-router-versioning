@@ -4,6 +4,7 @@
 
 ### Internal
 
+* 🐛 Fix test-redistribute collection error from anyio's deprecated BlockingPortal alias. PR [#96](https://github.com/mat81black/fastapi-router-versioning/pull/96) by [@mat81black](https://github.com/mat81black).
 * ⬆ Bump the python-packages group with 4 updates. PR [#94](https://github.com/mat81black/fastapi-router-versioning/pull/94) by [@dependabot[bot]](https://github.com/apps/dependabot).
 * ⬆ Bump re-actors/alls-green from 1.2.2 to 1.3.0 in the github-actions group. PR [#93](https://github.com/mat81black/fastapi-router-versioning/pull/93) by [@dependabot[bot]](https://github.com/apps/dependabot).
 * ⬆ Bump pre-commit hooks. PR [#92](https://github.com/mat81black/fastapi-router-versioning/pull/92) by [@mat81black](https://github.com/mat81black).
