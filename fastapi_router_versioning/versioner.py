@@ -1,3 +1,4 @@
+import html
 import inspect
 
 from collections import defaultdict
@@ -35,14 +36,18 @@ _ATTR_REMOVE_IN = "_remove_in_version"
 
 class _AppRegistry:
     """Cross-instance bookkeeping for multiple RouterVersioner sharing one app: claimed
-    prefixes (collision detection) and /versions providers (aggregation). Keyed by app in
-    _app_registries below instead of living on app.state, so it's only ever reachable through
-    this module, not through any other code holding a reference to the app.
+    prefixes (collision detection), the version-model providers feeding the aggregated
+    /versions endpoint and its HTML dashboard, and a mount latch per aggregated route so
+    the first instance to enable one wins and the rest skip it. Keyed by app in
+    _app_registries below instead of living on app.state, so it's only ever reachable
+    through this module, not through any other code holding a reference to the app.
     """
 
     def __init__(self) -> None:
         self.claimed_prefixes: set[str] = set()
         self.version_providers: list[Callable[[str], list[dict[str, Any]]]] = []
+        self.versions_route_mounted: bool = False
+        self.versions_dashboard_mounted: bool = False
 
 
 _app_registries: WeakKeyDictionary[FastAPI, _AppRegistry] = WeakKeyDictionary()
@@ -54,6 +59,92 @@ def _get_app_registry(app: FastAPI) -> _AppRegistry:
         registry = _AppRegistry()
         _app_registries[app] = registry
     return registry
+
+
+def _aggregate_version_models(registry: _AppRegistry, root_path: str) -> list[dict[str, Any]]:
+    version_models: list[dict[str, Any]] = []
+    for provider in registry.version_providers:
+        version_models.extend(provider(root_path))
+    return version_models
+
+
+def _render_versions_dashboard(versions: list[dict[str, Any]], title: str, version: str) -> str:
+    """Default renderer for the versions dashboard: a self-contained HTML page, no external
+    assets. Replaced wholesale by versions_dashboard_hook when one is given. title and version
+    are the FastAPI app's own app.title / app.version.
+    """
+    esc_title = html.escape(title)
+    esc_version = html.escape(version)
+    items: list[str] = []
+    for model in versions:
+        label = html.escape(str(model["version"]))
+        links = [
+            f'<a href="{html.escape(model[key])}">{text}</a>'
+            for key, text in (("swagger_url", "Swagger"), ("redoc_url", "ReDoc"), ("openapi_url", "OpenAPI"))
+            if key in model
+        ]
+        docs = f'<span class="links">{"".join(links)}</span>' if links else '<span class="none">no docs</span>'
+        items.append(f'      <li><span class="v">{label}</span>{docs}</li>')
+    count = len(versions)
+    list_html = "\n".join(items)
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{esc_title} &middot; API versions</title>
+    <style>
+      :root {{
+        color-scheme: light dark;
+        --bg: #f6f7f9; --card: #ffffff; --fg: #1c1e21; --muted: #6b7280;
+        --border: #e5e7eb; --accent: #0d9488;
+      }}
+      @media (prefers-color-scheme: dark) {{
+        :root {{
+          --bg: #16181d; --card: #1f2229; --fg: #e6e7ea; --muted: #9aa0aa;
+          --border: #2c2f38; --accent: #2dd4bf;
+        }}
+      }}
+      * {{ box-sizing: border-box; }}
+      body {{
+        margin: 0; padding: 3rem 1rem; background: var(--bg); color: var(--fg);
+        font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }}
+      main {{ max-width: 42rem; margin: 0 auto; }}
+      h1 {{ margin: 0 0 .25rem; font-size: 1.5rem; }}
+      h1 .ver {{
+        font-size: .8rem; font-weight: 500; color: var(--muted);
+        border: 1px solid var(--border); border-radius: 999px;
+        padding: .1rem .5rem; vertical-align: middle;
+      }}
+      p.sub {{ margin: 0 0 2rem; color: var(--muted); }}
+      ul {{ list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }}
+      li {{
+        display: flex; flex-wrap: wrap; align-items: center; gap: .75rem;
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: .75rem; padding: .9rem 1.1rem;
+      }}
+      .v {{ font-weight: 600; font-size: 1.05rem; margin-right: auto; }}
+      .links {{ display: flex; flex-wrap: wrap; gap: .4rem; }}
+      .links a {{
+        text-decoration: none; font-size: .875rem; padding: .3rem .7rem;
+        border: 1px solid var(--border); border-radius: 999px; color: var(--fg);
+      }}
+      .links a:hover {{ border-color: var(--accent); color: var(--accent); }}
+      .none {{ color: var(--muted); font-size: .875rem; }}
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>{esc_title} <span class="ver">{esc_version}</span></h1>
+      <p class="sub">{count} active API version{"" if count == 1 else "s"}</p>
+      <ul>
+{list_html}
+      </ul>
+    </main>
+  </body>
+</html>
+"""
 
 
 class VersionFormat(str, Enum):
@@ -122,6 +213,9 @@ class RouterVersioner:
         include_version_openapi_route: bool = True,
         include_versions_route: bool = False,
         versions_route_path: str | None = None,
+        include_versions_dashboard: bool = False,
+        versions_dashboard_path: str | None = None,
+        versions_dashboard_hook: Callable[[list[dict[str, Any]], str], str] | None = None,
         sort_routes: bool = False,
         callback: Callable[[APIRouter, VersionT, str], None] | None = None,
         webhook_routers: list[APIRouter] | APIRouter | None = None,
@@ -154,6 +248,14 @@ class RouterVersioner:
             Has no effect unless include_versions_route is True. When several RouterVersioner instances share one app,
             the endpoint is mounted once by the first of them to enable it, and that instance fixes its path (None or
             not); a different versions_route_path on a later instance is ignored.
+        :param include_versions_dashboard: If True, adds an HTML page listing every active version with links to its
+            docs. The built-in page shows app.title and app.version. Same aggregated data as the /versions JSON route,
+            but independent of it; kept out of the OpenAPI schema.
+        :param versions_dashboard_path: Path for that page; defaults to '/dashboard' when None. Must start with '/'.
+            Has no effect unless include_versions_dashboard is True. Same first-instance-wins rule as versions_route_path.
+        :param versions_dashboard_hook: Optional renderer replacing the built-in dashboard page. Receives the aggregated
+            version models (the same dicts the /versions JSON returns) and the request root_path; must return the full HTML.
+            App metadata is not passed: a hook that wants it reads app.title / app.version off its own app reference.
         :param sort_routes: If True, sorts all routes alphabetically by path.
         :param callback: Optional hook invoked every time a versioned APIRouter is created.
         :param webhook_routers: A single APIRouter or a list of APIRouters containing webhook definitions
@@ -189,10 +291,10 @@ class RouterVersioner:
         self._include_version_docs = include_version_docs
         self._include_version_openapi_route = include_version_openapi_route
         self._include_versions_route = include_versions_route
-        if versions_route_path is not None and not versions_route_path.startswith("/"):
-            error_msg = f"versions_route_path must start with '/', got {versions_route_path!r}."
-            raise ValueError(error_msg)
-        self._versions_route_path = versions_route_path
+        self._versions_route_path = self._validate_route_path(versions_route_path, "versions_route_path")
+        self._include_versions_dashboard = include_versions_dashboard
+        self._versions_dashboard_path = self._validate_route_path(versions_dashboard_path, "versions_dashboard_path")
+        self._versions_dashboard_hook = versions_dashboard_hook
         self._sort_routes = sort_routes
         self._callback = callback
         self._webhook_routers: list[APIRouter] | None = (
@@ -218,6 +320,13 @@ class RouterVersioner:
         self._redoc_url = getattr(app, "redoc_url", "/redoc")
 
         self._versionized = False
+
+    @staticmethod
+    def _validate_route_path(path: str | None, param_name: str) -> str | None:
+        if path is not None and not path.startswith("/"):
+            error_msg = f"{param_name} must start with '/', got {path!r}."
+            raise ValueError(error_msg)
+        return path
 
     def _validate_version_type(self, version: Any, route_path: str) -> None:
         if self._version_format == VersionFormat.SEMVER:
@@ -344,8 +453,14 @@ class RouterVersioner:
             self._claim_prefix(prefix)
         for _prefix, router in prepared:
             self._app.include_router(router=router)
+        if self._include_versions_route or self._include_versions_dashboard:
+            _get_app_registry(self._app).version_providers.append(
+                lambda root_path: self._build_version_models(versions, root_path)
+            )
         if self._include_versions_route:
-            self._add_versions_route(versions=versions)
+            self._add_versions_route()
+        if self._include_versions_dashboard:
+            self._add_versions_dashboard()
 
         return versions
 
@@ -700,20 +815,33 @@ class RouterVersioner:
 
         return version_models
 
-    def _add_versions_route(self, versions: list[VersionT]) -> None:
-        providers = _get_app_registry(self._app).version_providers
-        is_first_provider = not providers
-        providers.append(lambda root_path: self._build_version_models(versions, root_path))
-
-        if not is_first_provider:
+    def _add_versions_route(self) -> None:
+        registry = _get_app_registry(self._app)
+        if registry.versions_route_mounted:
             return
+        registry.versions_route_mounted = True
 
         route_path = self._versions_route_path or "/versions"
 
         @self._app.get(route_path, tags=["Versions"], response_class=JSONResponse)
         def get_versions(request: Request) -> dict[str, Any]:
             root_path = request.scope.get("root_path", "").rstrip("/")
-            version_models: list[dict[str, Any]] = []
-            for provider in providers:
-                version_models.extend(provider(root_path))
-            return {"versions": version_models}
+            return {"versions": _aggregate_version_models(registry, root_path)}
+
+    def _add_versions_dashboard(self) -> None:
+        registry = _get_app_registry(self._app)
+        if registry.versions_dashboard_mounted:
+            return
+        registry.versions_dashboard_mounted = True
+
+        route_path = self._versions_dashboard_path or "/dashboard"
+        app = self._app
+        hook = self._versions_dashboard_hook
+
+        @app.get(route_path, tags=["Versions"], response_class=HTMLResponse, include_in_schema=False)
+        def get_versions_dashboard(request: Request) -> HTMLResponse:
+            root_path = request.scope.get("root_path", "").rstrip("/")
+            models = _aggregate_version_models(registry, root_path)
+            if hook is not None:
+                return HTMLResponse(hook(models, root_path))
+            return HTMLResponse(_render_versions_dashboard(models, app.title, app.version))
