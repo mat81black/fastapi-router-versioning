@@ -133,7 +133,10 @@ addopts = [
     "--strict-markers",
 ]
 strict_xfail = true
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    "default:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
