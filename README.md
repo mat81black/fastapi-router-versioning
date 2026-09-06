@@ -156,6 +156,9 @@ for a working example.
 | `include_version_openapi_route` | `bool` | `True` | Create a per-version `openapi.json` route |
 | `include_versions_route` | `bool` | `False` | Add a `GET /versions` endpoint listing all active versions |
 | `versions_route_path` | `str \| None` | `None` | Path for that endpoint (defaults to `/versions`); must start with `/` |
+| `include_versions_dashboard` | `bool` | `False` | Add an HTML page listing all active versions with links to their docs |
+| `versions_dashboard_path` | `str \| None` | `None` | Path for that page (defaults to `/dashboard`); must start with `/` |
+| `versions_dashboard_hook` | `Callable[[list[dict], str], str] \| None` | `None` | Replace the built-in dashboard page; receives `(version_models, root_path)`, returns HTML |
 | `sort_routes` | `bool` | `False` | Sort routes alphabetically by path within each version |
 | `callback` | `Callable[[APIRouter, VersionT, str], None] \| None` | `None` | Called once per versioned router, right before it's included in the app |
 | `webhook_routers` | `APIRouter \| list[APIRouter] \| None` | `None` | Router(s) with webhook definitions annotated via `@api_version`; each version's schema shows only the webhooks active in it |
@@ -238,6 +241,15 @@ If several `RouterVersioner` instances share one app and all set `include_versio
 first instance shadowing the rest (see [Multiple routers](#multiple-routers)). That single
 endpoint is mounted by the first of those instances, which also fixes its path: a different
 `versions_route_path` passed by a later instance has no effect.
+
+Set `include_versions_dashboard=True` for an HTML counterpart: a page (at `/dashboard` by
+default, moved with `versions_dashboard_path`) headed by the app's `title` and `version` and
+listing the same versions with links to each one's Swagger, ReDoc and `openapi.json`. It
+aggregates across instances and follows the same first-instance-wins rule, works whether or
+not `include_versions_route` is also on, and is kept out of the OpenAPI schema. The built-in
+page is deliberately plain; pass `versions_dashboard_hook(version_models, root_path) -> str`
+to render your own instead (it isn't handed the app metadata, so read `app.title` /
+`app.version` off your own app reference if you want them).
 
 ### Custom URL format
 
@@ -467,6 +479,8 @@ issue and start it again.
 | [`multi_router_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/multi_router_app.py) | Several routers versioned together under one instance |
 | [`self_hosted_docs_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/self_hosted_docs_app.py) | Swagger UI and ReDoc served from local static assets |
 | [`openapi_hook_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/openapi_hook_app.py) | Per-version OpenAPI schema edits via `openapi_hook` |
+| [`versions_dashboard_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/versions_dashboard_app.py) | `GET /versions` JSON and the `GET /dashboard` HTML page side by side |
+| [`versions_dashboard_hook_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/versions_dashboard_hook_app.py) | Custom dashboard via `versions_dashboard_hook`: Jinja template with a separate stylesheet file |
 | [`mounted_subapps_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/mounted_subapps_app.py) | Independently versioned modules as separate `app.mount()` sub-applications |
 | [`validation_override_integration_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/validation_override_integration_app.py) | Custom validation error status code via `fastapi-validation-override` and `openapi_hook` |
 

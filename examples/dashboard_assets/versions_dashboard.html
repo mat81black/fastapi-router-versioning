@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }} &middot; API versions</title>
+    <link rel="stylesheet" href="{{ root_path }}/assets/versions_dashboard.css">
+  </head>
+  <body>
+    <main>
+      <h1>{{ title }} <span class="ver">{{ version }}</span></h1>
+      <p class="sub">{{ versions | length }} active API version{{ "" if versions | length == 1 else "s" }}</p>
+      <ul>
+        {%- for v in versions %}
+        <li>
+          <span class="v">{{ v.version }}</span>
+          {%- if v.swagger_url or v.redoc_url or v.openapi_url %}
+          <span class="links">
+            {%- if v.swagger_url %}<a href="{{ v.swagger_url }}">Swagger</a>{% endif %}
+            {%- if v.redoc_url %}<a href="{{ v.redoc_url }}">ReDoc</a>{% endif %}
+            {%- if v.openapi_url %}<a href="{{ v.openapi_url }}">OpenAPI</a>{% endif %}
+          </span>
+          {%- else %}
+          <span class="none">no docs</span>
+          {%- endif %}
+        </li>
+        {%- endfor %}
+      </ul>
+    </main>
+  </body>
+</html>
