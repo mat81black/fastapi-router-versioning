@@ -155,6 +155,7 @@ for a working example.
 | `include_version_docs` | `bool` | `True` | Create per-version Swagger UI and ReDoc pages |
 | `include_version_openapi_route` | `bool` | `True` | Create a per-version `openapi.json` route |
 | `include_versions_route` | `bool` | `False` | Add a `GET /versions` endpoint listing all active versions |
+| `versions_route_path` | `str \| None` | `None` | Path for that endpoint (defaults to `/versions`); must start with `/` |
 | `sort_routes` | `bool` | `False` | Sort routes alphabetically by path within each version |
 | `callback` | `Callable[[APIRouter, VersionT, str], None] \| None` | `None` | Called once per versioned router, right before it's included in the app |
 | `webhook_routers` | `APIRouter \| list[APIRouter] \| None` | `None` | Router(s) with webhook definitions annotated via `@api_version`; each version's schema shows only the webhooks active in it |
@@ -229,9 +230,14 @@ GET /versions
 }
 ```
 
+Pass `versions_route_path="/api-versions"` (any path starting with `/`) to mount the endpoint
+somewhere other than `/versions`.
+
 If several `RouterVersioner` instances share one app and all set `include_versions_route=True`,
 `/versions` is mounted once and lists every instance's versions together, instead of the
-first instance shadowing the rest (see [Multiple routers](#multiple-routers)).
+first instance shadowing the rest (see [Multiple routers](#multiple-routers)). That single
+endpoint is mounted by the first of those instances, which also fixes its path: a different
+`versions_route_path` passed by a later instance has no effect.
 
 ### Custom URL format
 

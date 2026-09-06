@@ -121,6 +121,7 @@ class RouterVersioner:
         include_version_docs: bool = True,
         include_version_openapi_route: bool = True,
         include_versions_route: bool = False,
+        versions_route_path: str | None = None,
         sort_routes: bool = False,
         callback: Callable[[APIRouter, VersionT, str], None] | None = None,
         webhook_routers: list[APIRouter] | APIRouter | None = None,
@@ -149,6 +150,10 @@ class RouterVersioner:
         :param include_version_docs: If True, creates isolated Swagger/ReDoc pages for each version.
         :param include_version_openapi_route: If True, creates an independent openapi.json route for each version.
         :param include_versions_route: If True, adds a 'GET /versions' endpoint returning info on all active API versions.
+        :param versions_route_path: Path for that endpoint; defaults to '/versions' when None. Must start with '/'.
+            Has no effect unless include_versions_route is True. When several RouterVersioner instances share one app,
+            the endpoint is mounted once by the first of them to enable it, and that instance fixes its path (None or
+            not); a different versions_route_path on a later instance is ignored.
         :param sort_routes: If True, sorts all routes alphabetically by path.
         :param callback: Optional hook invoked every time a versioned APIRouter is created.
         :param webhook_routers: A single APIRouter or a list of APIRouters containing webhook definitions
@@ -184,6 +189,10 @@ class RouterVersioner:
         self._include_version_docs = include_version_docs
         self._include_version_openapi_route = include_version_openapi_route
         self._include_versions_route = include_versions_route
+        if versions_route_path is not None and not versions_route_path.startswith("/"):
+            error_msg = f"versions_route_path must start with '/', got {versions_route_path!r}."
+            raise ValueError(error_msg)
+        self._versions_route_path = versions_route_path
         self._sort_routes = sort_routes
         self._callback = callback
         self._webhook_routers: list[APIRouter] | None = (
@@ -699,7 +708,9 @@ class RouterVersioner:
         if not is_first_provider:
             return
 
-        @self._app.get("/versions", tags=["Versions"], response_class=JSONResponse)
+        route_path = self._versions_route_path or "/versions"
+
+        @self._app.get(route_path, tags=["Versions"], response_class=JSONResponse)
         def get_versions(request: Request) -> dict[str, Any]:
             root_path = request.scope.get("root_path", "").rstrip("/")
             version_models: list[dict[str, Any]] = []

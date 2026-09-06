@@ -88,6 +88,132 @@ def test_versionize_does_not_write_to_app_state() -> None:
     assert vars(app.state) == {"_state": {}}
 
 
+def test_versions_route_path_mounts_endpoint_at_a_custom_path() -> None:
+    """versions_route_path moves the discovery endpoint off the default /versions; the old
+    path stops existing and the custom one serves the same payload."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/test")
+    @api_version((1, 0))
+    def test_route() -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app,
+        routers=router,
+        version_format=VersionFormat.SEMVER,
+        include_versions_route=True,
+        versions_route_path="/api-versions",
+    ).versionize()
+
+    paths = {getattr(r, "path", None) for r in app.routes}
+    assert "/api-versions" in paths
+    assert "/versions" not in paths
+
+    client = TestClient(app)
+    assert client.get("/versions").status_code == 404
+    data = client.get("/api-versions").json()
+    assert [v["version"] for v in data["versions"]] == ["1.0"]
+
+
+def test_versions_route_path_is_ignored_when_route_is_disabled() -> None:
+    """versions_route_path only names where the endpoint goes; it doesn't switch it on.
+    With include_versions_route=False, no discovery endpoint is mounted at all."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/test")
+    @api_version((1, 0))
+    def test_route() -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app,
+        routers=router,
+        version_format=VersionFormat.SEMVER,
+        include_versions_route=False,
+        versions_route_path="/api-versions",
+    ).versionize()
+
+    paths = {getattr(r, "path", None) for r in app.routes}
+    assert "/api-versions" not in paths
+    assert "/versions" not in paths
+
+
+def test_versions_route_path_first_non_none_value_wins_across_versioners() -> None:
+    """The aggregated /versions endpoint is mounted once, by the first instance that asks for
+    it. That instance fixes the path: a different versions_route_path passed by a later
+    instance has no effect, though its versions are still aggregated in."""
+    app = FastAPI()
+
+    semver_router = APIRouter()
+
+    @semver_router.get("/items")
+    @api_version((1, 0))
+    def items() -> dict[str, str]: ...
+
+    calver_router = APIRouter()
+
+    @calver_router.get("/orders")
+    @api_version("2025-01-01")
+    def orders() -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app,
+        routers=semver_router,
+        version_format=VersionFormat.SEMVER,
+        include_versions_route=True,
+        versions_route_path="/api-versions",
+    ).versionize()
+    RouterVersioner(
+        app=app,
+        routers=calver_router,
+        version_format=VersionFormat.CALVER,
+        include_versions_route=True,
+        versions_route_path="/other-versions",
+    ).versionize()
+
+    paths = {getattr(r, "path", None) for r in app.routes}
+    assert "/api-versions" in paths
+    assert "/other-versions" not in paths
+
+    client = TestClient(app)
+    data = client.get("/api-versions").json()
+    assert {v["version"] for v in data["versions"]} == {"1.0", "2025-01-01"}
+
+
+def test_versions_route_path_none_keeps_the_default_even_behind_a_custom_first() -> None:
+    """Symmetric to the above: when the first instance leaves versions_route_path as None it
+    fixes the endpoint at /versions, and a later instance's custom path is still ignored."""
+    app = FastAPI()
+
+    semver_router = APIRouter()
+
+    @semver_router.get("/items")
+    @api_version((1, 0))
+    def items() -> dict[str, str]: ...
+
+    calver_router = APIRouter()
+
+    @calver_router.get("/orders")
+    @api_version("2025-01-01")
+    def orders() -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app, routers=semver_router, version_format=VersionFormat.SEMVER, include_versions_route=True
+    ).versionize()
+    RouterVersioner(
+        app=app,
+        routers=calver_router,
+        version_format=VersionFormat.CALVER,
+        include_versions_route=True,
+        versions_route_path="/other-versions",
+    ).versionize()
+
+    paths = {getattr(r, "path", None) for r in app.routes}
+    assert "/versions" in paths
+    assert "/other-versions" not in paths
+
+
 def test_versions_endpoint_omits_doc_links_when_app_openapi_url_is_none() -> None:
     """FastAPI(openapi_url=None) disables Swagger/ReDoc mounting for every version (see
     _add_version_docs, which requires app.openapi_url is not None). /versions must not
