@@ -2,6 +2,10 @@
 
 ## Latest Changes
 
+### Features
+
+* ✨ Make the /versions discovery endpoint path configurable. PR [#95](https://github.com/mat81black/fastapi-router-versioning/pull/95) by [@mat81black](https://github.com/mat81black).
+
 ### Internal
 
 * 🐛 Fix test-redistribute collection error from anyio's deprecated BlockingPortal alias. PR [#96](https://github.com/mat81black/fastapi-router-versioning/pull/96) by [@mat81black](https://github.com/mat81black).
