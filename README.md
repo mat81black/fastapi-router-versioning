@@ -15,6 +15,7 @@ Running multiple API versions side by side usually means duplicating routers, ha
 - **SemVer and CalVer**: version routes with `(major, minor)` tuples, or with arbitrary sortable strings
 - **Per-version docs**: isolated Swagger UI, ReDoc, and `openapi.json` for every active version
 - **Declarative lifecycle**: mark a route's introduction, deprecation, and removal with one decorator
+- **Deprecation headers**: opt-in `Deprecation`, `Sunset` and `Link` response headers on routes in their deprecation window
 - **Latest alias**: expose the newest version under a fixed `/latest` prefix clients can pin to
 - **Self-hosted docs assets**: point Swagger UI and ReDoc at your own JS/CSS for air-gapped deployments
 - **Reverse proxy and sub-app aware**: doc URLs pick up the ASGI `root_path` at request time
@@ -139,6 +140,9 @@ dedicated route in a later version; the other method keeps being served by the o
 route. See [`semver_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/semver_app.py)
 for a working example.
 
+Routes in their deprecation window can also emit `Deprecation`, `Sunset` and `Link` response
+headers to clients, see [Deprecation headers](#deprecation-headers).
+
 ---
 
 ## `RouterVersioner` reference
@@ -159,6 +163,8 @@ for a working example.
 | `include_versions_dashboard` | `bool` | `False` | Add an HTML page listing all active versions with links to their docs |
 | `versions_dashboard_path` | `str \| None` | `None` | Path for that page (defaults to `/dashboard`); must start with `/` |
 | `versions_dashboard_hook` | `Callable[[list[dict], str], str] \| None` | `None` | Replace the built-in dashboard page; receives `(version_models, root_path)`, returns HTML |
+| `deprecation_headers` | `bool` | `False` | Emit `Deprecation` / `Sunset` / `Link` headers on responses of routes in their deprecation window. See [Deprecation headers](#deprecation-headers) |
+| `version_info` | `dict[VersionT, VersionInfo] \| None` | `None` | Per-version `VersionInfo(release_date=…, guide=…)` feeding those headers with dates and guide URLs. No effect unless `deprecation_headers` is `True` |
 | `sort_routes` | `bool` | `False` | Sort routes alphabetically by path within each version |
 | `callback` | `Callable[[APIRouter, VersionT, str], None] \| None` | `None` | Called once per versioned router, right before it's included in the app |
 | `webhook_routers` | `APIRouter \| list[APIRouter] \| None` | `None` | Router(s) with webhook definitions annotated via `@api_version`; each version's schema shows only the webhooks active in it |
@@ -190,11 +196,60 @@ that can't be undone.
 
 `version`, `deprecate_in`, and `remove_in` must all match the `version_format` in use on
 the `RouterVersioner` that will process the route (`tuple[int, int]` for SemVer, `str` for
-CalVer).
+CalVer). Deprecation headers are configured on `RouterVersioner`, not here; see
+[Deprecation headers](#deprecation-headers).
 
 ---
 
 ## Advanced options
+
+### Deprecation headers
+
+By default the lifecycle is docs-only: a deprecated route is flagged in its per-version
+OpenAPI, but a client calling it gets no signal. Set `deprecation_headers=True` and
+`RouterVersioner` adds standards-based headers to every response of a route in its
+deprecation window; `version_info` (one `VersionInfo` per version) supplies the dates and
+guide URLs. The values are fixed at `versionize()` time (no middleware, no `Depends()`, no
+request inspection to pick a handler); the only per-request step is prefixing the
+`successor-version` link with `root_path`, exactly as the built-in `/docs` and
+`/openapi.json` routes do.
+
+```python
+from datetime import date
+from fastapi_router_versioning import RouterVersioner, VersionInfo
+
+RouterVersioner(
+    app=app,
+    routers=router,
+    deprecation_headers=True,
+    version_info={
+        (1, 0): VersionInfo(release_date=date(2024, 1, 15)),
+        (2, 0): VersionInfo(
+            release_date=date(2025, 3, 1),
+            guide="https://api.example.com/docs/upgrade/v2",
+        ),
+        (3, 0): VersionInfo(release_date=date(2026, 1, 1)),
+    },
+).versionize()
+```
+
+| Header | Source | Emitted when |
+|---|---|---|
+| `Deprecation: @<unix-seconds>` ([RFC 9745](https://www.rfc-editor.org/rfc/rfc9745)) | `version_info[deprecate_in].release_date` | that version has a date |
+| `Sunset: <HTTP-date>` ([RFC 8594](https://www.rfc-editor.org/rfc/rfc8594)) | `version_info[remove_in].release_date` | `remove_in` is set and that version has a date |
+| `Link: …; rel="successor-version"` ([RFC 5829](https://www.rfc-editor.org/rfc/rfc5829)) | the next mounted version still serving the same `(path, method)`, `root_path`-prefixed | such a version exists |
+| `Link: …; rel="deprecation"` (RFC 9745) | `version_info[deprecate_in].guide` | that version has a guide URL |
+
+Both `VersionInfo` fields are optional; a version missing from the map, or a field left
+`None`, just yields nothing for that part, no warning. With `deprecation_headers=True` and no
+`version_info` at all, only the `successor-version` link is emitted (it needs no config).
+`versionize()` raises if a route's `remove_in` date precedes its `deprecate_in` date (when
+both are dated): RFC 9745 forbids a `Sunset` earlier than the `Deprecation`.
+
+`@api_version` is untouched: the lifecycle stays on the route, the calendar facts stay on the
+versioner. `Deprecation` and `Sunset` only fill a gap: a route that sets its own wins. Our
+`Link` field goes out separately from any the route already emits (RFC 8288: multiple `Link`
+fields combine). See [`deprecation_headers_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/deprecation_headers_app.py).
 
 ### Latest alias
 
