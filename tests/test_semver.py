@@ -36,19 +36,16 @@ def test_semver_lifecycle() -> None:
 
     client = TestClient(app)
 
-    # v1.0
     assert client.get("/v1_0/persistent").status_code == 200
     assert client.get("/v1_0/newcomer").status_code == 404
     assert client.get("/v1_0/lifecycle").status_code == 200
     assert client.get("/v1_0/future").status_code == 404
 
-    # v2.0
     assert client.get("/v2_0/persistent").status_code == 200
     assert client.get("/v2_0/newcomer").status_code == 200
     assert client.get("/v2_0/lifecycle").status_code == 200
     assert client.get("/v2_0/future").status_code == 404
 
-    # v3.0
     assert client.get("/v3_0/persistent").status_code == 200
     assert client.get("/v3_0/newcomer").status_code == 200
     assert client.get("/v3_0/lifecycle").status_code == 404
@@ -58,9 +55,8 @@ def test_semver_lifecycle() -> None:
 def test_semver_remove_in_without_start_version() -> None:
     """remove_in is honoured even when no route starts in that version.
 
-    Previously the version loop only iterated versions where at least one route
-    started, so a version referenced only by remove_in was never processed and
-    the route was never removed.
+    A version named only by remove_in has nothing in the introduced set: it exists purely as a
+    removal boundary, and must still be generated with the route gone from it.
     """
     app = FastAPI()
     router = APIRouter()
@@ -120,8 +116,8 @@ def test_semver_type_validation_raises_error() -> None:
 
 
 def test_semver_default_version_type_validation_raises_error() -> None:
-    """A string default_version on a SEMVER-configured versioner raises ValueError at
-    construction time, the same way an invalid @api_version on a route does."""
+    """A string default_version is rejected in __init__, with the same "expects SEMVER"
+    ValueError an invalid @api_version on a route raises at versionize() time."""
     app = FastAPI()
     router = APIRouter()
 

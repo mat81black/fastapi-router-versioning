@@ -67,7 +67,8 @@ def test_latest_prefix_collides_with_own_version_prefix_raises() -> None:
 def test_calling_versionize_twice_on_same_instance_raises() -> None:
     """Calling .versionize() a second time on the same instance must raise a clear,
     self-explanatory error instead of the misleading '...used by another RouterVersioner'
-    message that _claim_prefix would otherwise produce (it's the same instance, not another)."""
+    message that check_prefix_available would otherwise produce (it's the same instance, not
+    another)."""
     app = FastAPI()
     router = APIRouter()
 

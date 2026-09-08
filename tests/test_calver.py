@@ -36,17 +36,14 @@ def test_calver_lifecycle() -> None:
 
     client = TestClient(app)
 
-    # January
     assert client.get("/2025-01-01/persistent").status_code == 200
     assert client.get("/2025-01-01/newcomer").status_code == 404
     assert client.get("/2025-01-01/lifecycle").status_code == 200
 
-    # June
     assert client.get("/2025-06-01/persistent").status_code == 200
     assert client.get("/2025-06-01/newcomer").status_code == 200
     assert client.get("/2025-06-01/lifecycle").status_code == 200
 
-    # December
     assert client.get("/2025-12-01/persistent").status_code == 200
     assert client.get("/2025-12-01/lifecycle").status_code == 404
     assert client.get("/2025-12-01/future").status_code == 200
@@ -55,9 +52,8 @@ def test_calver_lifecycle() -> None:
 def test_calver_remove_in_without_start_version() -> None:
     """remove_in is honoured even when no route starts in that version (CalVer).
 
-    Previously the version loop only iterated versions where at least one route
-    started, so a version referenced only by remove_in was never processed and
-    the route was never removed.
+    A version named only by remove_in has nothing in the introduced set: it exists purely as a
+    removal boundary, and must still be generated with the route gone from it.
     """
     app = FastAPI()
     router = APIRouter()
@@ -117,8 +113,8 @@ def test_calver_type_validation_raises_error() -> None:
 
 
 def test_calver_default_version_type_validation_raises_error() -> None:
-    """A tuple default_version on a CALVER-configured versioner raises ValueError at
-    construction time, the same way an invalid @api_version on a route does."""
+    """A tuple default_version is rejected in __init__, with the same "expects CALVER"
+    ValueError an invalid @api_version on a route raises at versionize() time."""
     app = FastAPI()
     router = APIRouter()
 

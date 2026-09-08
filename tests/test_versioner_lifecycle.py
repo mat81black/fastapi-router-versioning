@@ -7,8 +7,8 @@ from fastapi_router_versioning import RouterVersioner, VersionFormat, api_versio
 
 
 def test_latest_prefix_created_when_final_version_has_no_routes() -> None:
-    """latest_prefix must be created even when the final version removes all routes
-    (previously the empty dict {} was falsy, causing latest_prefix to be silently skipped)."""
+    """latest_prefix must be created even when the final version removes all routes: an empty
+    route set is still a version, and the alias has to point at it."""
     app = FastAPI()
     router = APIRouter()
 
@@ -58,8 +58,8 @@ def test_remove_in_does_not_evict_a_newer_route_at_the_same_path() -> None:
     client = TestClient(app)
     assert client.get("/v1_0/item").json() == {"v": "1"}
     assert client.get("/v2_0/item").json() == {"v": "2"}
-    # Without the fix, item_v1's remove_in=(3, 0) evicts item_v2 too, since both share the
-    # same (path, method) key: this used to 404 instead of resolving to item_v2.
+    # item_v1's remove_in=(3, 0) must evict item_v1 only: item_v2 has held the same
+    # (path, method) key since 2.0 and keeps it here.
     assert client.get("/v3_0/item").json() == {"v": "2"}
 
 
@@ -77,8 +77,8 @@ def test_deprecate_in_alone_creates_the_deprecation_version() -> None:
 
     versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER)
     versions = versioner.versionize()
-    # Without the fix, only (1, 0) is generated: (2, 0) is absent from both introduced and
-    # removed, so it never enters the version set.
+    # (2, 0) is named only by deprecate_in, so it is in neither the introduced nor the removed
+    # set: it must enter the version list anyway.
     assert versions == [(1, 0), (2, 0)]
 
     client = TestClient(app)
@@ -124,8 +124,8 @@ def test_multi_method_route_is_mounted_once() -> None:
     with patch.object(APIRouter, "add_api_route", spy):
         RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER).versionize()
 
-    # Without the fix, add_api_route is called once per method sharing the (path, method) keys
-    # generated for the same route, i.e. twice for methods=["GET", "POST"].
+    # One route holding two (path, method) keys: add_api_route must be called once for it,
+    # not once per method.
     assert len(calls_for_item) == 1
 
     client = TestClient(app)

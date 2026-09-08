@@ -5,7 +5,7 @@ from fastapi_router_versioning import RouterVersioner, VersionFormat, VersionInf
 
 
 def test_versions_endpoint_generation() -> None:
-    """Checks that the /versions endpoint returns correct links to docs for each active version."""
+    """The /versions endpoint lists every active version with links to its docs."""
     app = FastAPI()
     router = APIRouter()
 
@@ -216,7 +216,7 @@ def test_versions_route_path_none_keeps_the_default_even_behind_a_custom_first()
 
 def test_versions_endpoint_omits_doc_links_when_app_openapi_url_is_none() -> None:
     """FastAPI(openapi_url=None) disables Swagger/ReDoc mounting for every version (see
-    _add_version_docs, which requires app.openapi_url is not None). /versions must not
+    DocsMounter.mount, which requires app.openapi_url is not None). /versions must not
     advertise swagger_url/redoc_url in that case either, or they'd point at 404s."""
     app = FastAPI(openapi_url=None)
     router = APIRouter()

@@ -1,10 +1,3 @@
-"""Which routes are active in which version.
-
-Turns the flat @api_version annotations (introduce / deprecate / remove) into, per version,
-the set of routes that version serves. Regular routes and webhooks go through the same
-bookkeeping; only the input list and the output shape differ.
-"""
-
 from collections import defaultdict
 from typing import Any
 

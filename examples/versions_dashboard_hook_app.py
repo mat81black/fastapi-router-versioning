@@ -8,7 +8,8 @@ the page.
 
 - version_models: the same list GET /versions returns under "versions". Each entry has
   "version" and, when the per-version docs exist, "swagger_url" / "redoc_url" /
-  "openapi_url" (already root_path-prefixed).
+  "openapi_url" (already root_path-prefixed), plus "guide_url" for the versions
+  version_info gives a migration guide for.
 - root_path: the request root_path ("" when there is none); used here only to build the
   stylesheet URL.
 

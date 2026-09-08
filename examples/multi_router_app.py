@@ -54,8 +54,6 @@ def search_products() -> dict[str, list[str]]:
     return {"results": []}
 
 
-# POST /products with an invalid "quantity" (e.g. "not-a-number") returns FastAPI's
-# default 422 validation error.
 @products_router.post("/")
 @api_version((1, 0))
 def create_product(body: CreateProductRequest) -> dict[str, str]:

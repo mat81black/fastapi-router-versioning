@@ -37,11 +37,6 @@ def notes_file(tmp_path: Path) -> Path:
     return f
 
 
-# ---------------------------------------------------------------------------
-# parse_version / get_current_version / bump_version (unit-level error paths)
-# ---------------------------------------------------------------------------
-
-
 def test_parse_version_rejects_malformed_string() -> None:
     with pytest.raises(ValueError, match="Invalid version: 'not-a-version'"):
         parse_version("not-a-version")
@@ -65,20 +60,10 @@ def test_bump_version_rejects_invalid_bump_type() -> None:
         bump_version("1.0.0", "sideways")  # type: ignore
 
 
-# ---------------------------------------------------------------------------
-# current-version
-# ---------------------------------------------------------------------------
-
-
 def test_current_version(version_file: Path) -> None:
     result = runner.invoke(app, ["current-version", "--version-file", str(version_file)])
     assert result.exit_code == 0
     assert result.output.strip() == "0.1.0"
-
-
-# ---------------------------------------------------------------------------
-# prepare
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -175,7 +160,6 @@ def test_prepare_version_must_increase(version_file: Path, notes_file: Path) -> 
 
 
 def test_prepare_section_already_exists(version_file: Path, notes_file: Path) -> None:
-    # bump once
     runner.invoke(
         app,
         [
@@ -274,11 +258,6 @@ def test_prepare_notes_missing_latest_changes(version_file: Path, tmp_path: Path
     assert isinstance(result.exception, RuntimeError)
     assert "must start with" in str(result.exception)
     assert "Latest Changes" in str(result.exception)
-
-
-# ---------------------------------------------------------------------------
-# release-notes
-# ---------------------------------------------------------------------------
 
 
 def test_release_notes_extracts_body(version_file: Path, tmp_path: Path) -> None:

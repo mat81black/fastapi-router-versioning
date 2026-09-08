@@ -24,7 +24,7 @@ class CreateItemRequest(BaseModel):
 
 main_app = FastAPI(title="Main App")
 
-# ── Admin sub-app: SemVer ──────────────────────────────────────────────────
+# Admin sub-app: SemVer
 
 admin_app = FastAPI(title="Admin API")
 admin_router = APIRouter()
@@ -45,7 +45,7 @@ def create_admin_item(body: CreateItemRequest) -> dict[str, str]:
 RouterVersioner(app=admin_app, routers=admin_router, version_format=VersionFormat.SEMVER).versionize()
 
 
-# ── Orders sub-app: CalVer ────────────────────────────────────────────────────
+# Orders sub-app: CalVer
 
 orders_app = FastAPI(title="Orders API")
 orders_router = APIRouter()
@@ -65,8 +65,6 @@ def create_order_item(body: CreateItemRequest) -> dict[str, str]:
 
 RouterVersioner(app=orders_app, routers=orders_router, version_format=VersionFormat.CALVER).versionize()
 
-
-# ── Mount both sub-apps on the main app ───────────────────────────────────────
 
 main_app.mount("/admin", admin_app)
 main_app.mount("/orders", orders_app)

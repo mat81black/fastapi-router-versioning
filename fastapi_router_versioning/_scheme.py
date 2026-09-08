@@ -1,10 +1,3 @@
-"""How a version is written, validated and compared, for one RouterVersioner instance.
-
-VersionScheme owns the four settings that together decide what a version looks like
-(version_format, prefix_format, semantic_version_format, default_version); everything that
-needs to turn a version into a URL prefix, a docs label, or a validated value goes through it.
-"""
-
 from datetime import date
 from typing import Any
 

@@ -48,7 +48,6 @@ def test_webhook_routers_are_versioned_per_version() -> None:
 
 
 def test_webhook_routers_remove_in_removes_webhook_from_version() -> None:
-    """Webhooks with remove_in are absent from that version onwards."""
     app = FastAPI()
 
     webhook_router = APIRouter()
@@ -85,7 +84,6 @@ def test_webhook_routers_remove_in_removes_webhook_from_version() -> None:
 
 
 def test_webhook_routers_none_falls_back_to_app_webhooks() -> None:
-    """When webhook_routers is not provided, every version inherits app.webhooks."""
     app = FastAPI()
 
     @app.webhooks.post("/global-event")
@@ -133,7 +131,6 @@ def test_webhook_routers_provided_but_empty_does_not_fall_back_to_app_webhooks()
 
 
 def test_webhook_routers_as_list() -> None:
-    """webhook_routers accepts a list of APIRouter, not just a single one."""
     app = FastAPI()
     router = APIRouter()
     webhook_router1 = APIRouter()
@@ -197,7 +194,8 @@ def test_webhook_routers_no_webhook_before_first_version() -> None:
 
 
 def test_webhook_routers_calver() -> None:
-    """webhook_routers work with CalVer versioning (covers the str branch in _resolve_webhooks_for_version)."""
+    """webhook_routers work with CalVer versioning (covers the str branch in
+    resolve_webhooks_for_version)."""
     app = FastAPI()
     webhook_router = APIRouter()
 

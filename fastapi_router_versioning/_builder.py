@@ -1,10 +1,3 @@
-"""Turning the source routes of one version into a mountable APIRouter.
-
-The source routes belong to the routers the caller handed to RouterVersioner and are never
-modified: every version gets its own copy, carrying only the methods still assigned to it at
-that version, plus this version's documentation routes.
-"""
-
 import inspect
 
 from collections.abc import Callable
@@ -21,7 +14,10 @@ from ._versions import _ATTR_DEPRECATE_IN, VersionT
 
 
 class VersionRouterBuilder:
-    """Builds one version's APIRouter: its routes, their deprecation headers, and its docs."""
+    """The routers the caller handed to RouterVersioner are never modified: each version gets
+    its own copy of every route still active in it, carrying only the methods still assigned to
+    it there, plus that version's documentation routes.
+    """
 
     def __init__(
         self,
@@ -99,9 +95,7 @@ class VersionRouterBuilder:
         # every route as a plain APIRoute, dropping whatever get_route_handler() overrides.
         if isinstance(source_route, APIRoute):
             route_class = type(source_route)
-            # header_set (built above) rides on the endpoint, keyed by the mounted path,
-            # because that is what deprecation_route_class can still read after include_router
-            # rebuilds this route onto the app. WebSockets skip it: no response to decorate.
+            # Only APIRoute gets here: a WebSocket has no response to put headers on.
             if header_set:
                 route_class = deprecation_route_class(route_class)
                 attach_headers(source_route.endpoint, f"{router.prefix}{route.path}", header_set)

@@ -11,7 +11,6 @@ from fastapi_router_versioning import RouterVersioner, VersionFormat, VersionT, 
 
 
 def test_default_version_applied_to_undecorated_routes() -> None:
-    """Routes without @api_version should fall back to the configured default_version."""
     app = FastAPI()
     router = APIRouter()
 
@@ -317,7 +316,6 @@ def test_versionize_on_router_with_no_routes_returns_empty_list() -> None:
 
 
 def test_routers_as_list() -> None:
-    """routers accepts a list of APIRouter, not just a single one (multi-router support)."""
     app = FastAPI()
     router1 = APIRouter()
     router2 = APIRouter()
