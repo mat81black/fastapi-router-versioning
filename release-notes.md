@@ -11,6 +11,7 @@
 
 ### Docs
 
+* 💡 Review the comments and docstrings across package, tests and examples. PR [#103](https://github.com/mat81black/fastapi-router-versioning/pull/103) by [@mat81black](https://github.com/mat81black).
 * 📝 Complete the README reference and make its wording plainer. PR [#100](https://github.com/mat81black/fastapi-router-versioning/pull/100) by [@mat81black](https://github.com/mat81black).
 * 📝 Document the deprecation headers in the README. PR [#99](https://github.com/mat81black/fastapi-router-versioning/pull/99) by [@mat81black](https://github.com/mat81black).
 
