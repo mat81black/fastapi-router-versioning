@@ -4,6 +4,7 @@
 
 ### Features
 
+* ✨ Show each version's migration guide on /versions and the dashboard. PR [#101](https://github.com/mat81black/fastapi-router-versioning/pull/101) by [@mat81black](https://github.com/mat81black).
 * ✨ Signal route deprecation to clients with RFC 9745 Deprecation, RFC 8594 Sunset and Link headers. PR [#98](https://github.com/mat81black/fastapi-router-versioning/pull/98) by [@mat81black](https://github.com/mat81black).
 * ✨ Add an HTML dashboard listing all active API versions. PR [#97](https://github.com/mat81black/fastapi-router-versioning/pull/97) by [@mat81black](https://github.com/mat81black).
 * ✨ Make the /versions discovery endpoint path configurable. PR [#95](https://github.com/mat81black/fastapi-router-versioning/pull/95) by [@mat81black](https://github.com/mat81black).
