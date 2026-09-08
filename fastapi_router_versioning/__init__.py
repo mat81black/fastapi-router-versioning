@@ -1,4 +1,5 @@
-from .versioner import RouterVersioner, VersionFormat, VersionInfo, VersionT, api_version
+from ._versions import VersionFormat, VersionInfo, VersionT, api_version
+from .versioner import RouterVersioner
 
 __version__ = "1.0.3"
 

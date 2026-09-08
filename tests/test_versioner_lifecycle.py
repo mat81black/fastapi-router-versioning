@@ -112,7 +112,7 @@ def test_multi_method_route_is_mounted_once() -> None:
     original_add_api_route = APIRouter.add_api_route
     calls_for_item: list[str] = []
 
-    # inspect.signature(add_method) inside _add_route_to_router relies on the real
+    # inspect.signature(add_method) inside VersionRouterBuilder._add_route relies on the real
     # add_api_route signature to build its kwargs; functools.wraps keeps that intact.
     @functools.wraps(original_add_api_route)
     def spy(self: APIRouter, *args: Any, **kwargs: Any) -> Any:
