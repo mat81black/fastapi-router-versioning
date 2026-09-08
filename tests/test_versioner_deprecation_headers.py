@@ -86,6 +86,8 @@ def test_deprecated_flag_lands_in_the_per_version_schema_without_touching_the_de
     ).versionize()
 
     client = TestClient(app)
+    assert client.get("/v1_0/doc").status_code == 200
+    assert client.get("/v2_0/doc").status_code == 200
     op_v1 = client.get("/v1_0/openapi.json").json()["paths"]["/v1_0/doc"]["get"]
     op_v2 = client.get("/v2_0/openapi.json").json()["paths"]["/v2_0/doc"]["get"]
     assert op_v1.get("deprecated") is None
@@ -158,7 +160,9 @@ def test_successor_link_is_root_path_aware() -> None:
         version_info={(2, 0): VersionInfo(release_date=date(2025, 3, 1), guide="https://x.test/g")},
     ).versionize()
 
-    resp = TestClient(app, root_path="/api").get("/v2_0/keep")
+    client = TestClient(app, root_path="/api")
+    assert client.get("/v3_0/filler").status_code == 200
+    resp = client.get("/v2_0/keep")
     assert resp.headers["link"] == ('</api/v3_0/keep>; rel="successor-version", <https://x.test/g>; rel="deprecation"')
     # The guide link (an absolute URL) is untouched by root_path.
 
@@ -243,7 +247,9 @@ def test_flag_on_without_version_info_emits_only_the_successor_link() -> None:
 
     RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER, deprecation_headers=True).versionize()
 
-    resp = TestClient(app).get("/v2_0/keep")
+    client = TestClient(app)
+    assert client.get("/v3_0/filler").status_code == 200
+    resp = client.get("/v2_0/keep")
     assert resp.headers["link"] == '</v3_0/keep>; rel="successor-version"'
     assert "deprecation" not in resp.headers
     assert "sunset" not in resp.headers
@@ -393,8 +399,10 @@ def test_custom_route_class_is_subclassed_once_for_many_deprecated_routes() -> N
     # 2 routes x 2 deprecation-window versions (v2, v3) = 4 mounts + include_router copies,
     # yet the CountingRoute subclass is created exactly once.
     assert subclassed == ["_DeprecationHeadersRoute"]
-    assert TestClient(app).get("/v2_0/a").headers["deprecation"] == f"@{DEPRECATE_EPOCH}"
-    assert TestClient(app).get("/v3_0/b").headers["deprecation"] == f"@{DEPRECATE_EPOCH}"
+    client = TestClient(app)
+    assert client.get("/v3_0/filler").status_code == 200
+    assert client.get("/v2_0/a").headers["deprecation"] == f"@{DEPRECATE_EPOCH}"
+    assert client.get("/v3_0/b").headers["deprecation"] == f"@{DEPRECATE_EPOCH}"
 
 
 def test_latest_prefix_alias_also_carries_the_headers() -> None:
