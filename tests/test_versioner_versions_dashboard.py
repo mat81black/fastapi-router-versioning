@@ -5,7 +5,7 @@ import pytest
 from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
 
-from fastapi_router_versioning import RouterVersioner, VersionFormat, api_version
+from fastapi_router_versioning import RouterVersioner, VersionFormat, VersionInfo, api_version
 
 
 def _semver_router() -> APIRouter:
@@ -236,3 +236,30 @@ def test_dashboard_path_without_leading_slash_raises() -> None:
             include_versions_dashboard=True,
             versions_dashboard_path="dashboard",
         )
+
+
+def test_dashboard_lists_the_migration_guide_per_version() -> None:
+    """VersionInfo.guide is shown on the dashboard for the versions that have one, and needs
+    no deprecation_headers to appear."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/item")
+    @api_version((1, 0))
+    def item_v1() -> dict[str, str]: ...
+
+    @router.get("/item")
+    @api_version((2, 0))
+    def item_v2() -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app,
+        routers=router,
+        version_format=VersionFormat.SEMVER,
+        include_versions_dashboard=True,
+        version_info={(2, 0): VersionInfo(guide="https://example.com/upgrade/v2")},
+    ).versionize()
+
+    body = TestClient(app).get("/dashboard").text
+    assert '<a href="https://example.com/upgrade/v2">Guide</a>' in body
+    assert body.count(">Guide</a>") == 1  # only v2 has a guide; v1's row has none

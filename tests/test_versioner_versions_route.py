@@ -1,7 +1,7 @@
 from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
 
-from fastapi_router_versioning import RouterVersioner, VersionFormat, api_version
+from fastapi_router_versioning import RouterVersioner, VersionFormat, VersionInfo, api_version
 
 
 def test_versions_endpoint_generation() -> None:
@@ -234,3 +234,30 @@ def test_versions_endpoint_omits_doc_links_when_app_openapi_url_is_none() -> Non
     assert "openapi_url" not in version_model
     assert "swagger_url" not in version_model
     assert "redoc_url" not in version_model
+
+
+def test_versions_endpoint_includes_the_migration_guide_url_when_set() -> None:
+    """VersionInfo.guide is surfaced on /versions as guide_url, verbatim (no root_path), for
+    the versions that have one."""
+    app = FastAPI()
+    router = APIRouter()
+
+    @router.get("/item")
+    @api_version((1, 0))
+    def item_v1() -> dict[str, str]: ...
+
+    @router.get("/item")
+    @api_version((2, 0))
+    def item_v2() -> dict[str, str]: ...
+
+    RouterVersioner(
+        app=app,
+        routers=router,
+        version_format=VersionFormat.SEMVER,
+        include_versions_route=True,
+        version_info={(2, 0): VersionInfo(guide="https://example.com/upgrade/v2")},
+    ).versionize()
+
+    by_version = {v["version"]: v for v in TestClient(app).get("/versions").json()["versions"]}
+    assert by_version["2.0"]["guide_url"] == "https://example.com/upgrade/v2"
+    assert "guide_url" not in by_version["1.0"]
