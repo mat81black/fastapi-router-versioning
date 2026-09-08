@@ -3,6 +3,9 @@ import inspect
 
 from collections import defaultdict
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass
+from datetime import date, datetime, timezone
+from email.utils import formatdate
 from enum import Enum
 from typing import Any, TypeAlias, TypeVar
 from weakref import WeakKeyDictionary
@@ -10,7 +13,7 @@ from weakref import WeakKeyDictionary
 import fastapi.openapi.utils
 import fastapi.routing
 
-from fastapi import APIRouter, FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request, Response
 from fastapi.openapi.docs import (
     get_redoc_html,
     get_swagger_ui_html,
@@ -32,6 +35,69 @@ _OpenAPICacheKey: TypeAlias = tuple[VersionT, str]
 _ATTR_API_VERSION = "_api_version"
 _ATTR_DEPRECATE_IN = "_deprecate_in_version"
 _ATTR_REMOVE_IN = "_remove_in_version"
+# dict[mounted path, header dict] stashed on the endpoint by _add_route_to_router and read by
+# _deprecation_route_class's handler; keyed by path so one endpoint can back several versions.
+_ATTR_DEPRECATION_HEADERS = "_frv_deprecation_headers_by_path"
+
+
+def _to_epoch_seconds(value: date) -> int:
+    """A datetime.date has no time or zone: pin it to midnight UTC. A datetime keeps its own
+    tzinfo, or is read as UTC when naive. Used for the RFC 9745 Deprecation structured-field
+    Date (@<seconds>) and, via formatdate, the RFC 8594 Sunset HTTP-date.
+    """
+    if isinstance(value, datetime):
+        moment = value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+    else:
+        moment = datetime(value.year, value.month, value.day, tzinfo=timezone.utc)
+    return int(moment.timestamp())
+
+
+_deprecation_route_classes: WeakKeyDictionary[type[APIRoute], type[APIRoute]] = WeakKeyDictionary()
+
+
+def _deprecation_route_class(base_route_class: type[APIRoute]) -> type[APIRoute]:
+    """One subclass of base_route_class whose handler adds this package's deprecation headers
+    to every response. It reads the header set off its own endpoint, keyed by the mounted path
+    (stashed there by _add_route_to_router before mounting). Off the endpoint, not the route
+    instance, because that is what survives include_router rebuilding the route onto the app:
+    the endpoint object and the path carry over, a fresh instance's attributes do not.
+    Subclassing keeps the base class's own get_route_handler() in the chain.
+
+    Memoized per base class, so a custom route_class is subclassed once (its __init_subclass__
+    fires once) rather than once per deprecated route. The header values are built once, at
+    versionize() time; the only per-request work is expanding the "{root_path}" placeholder in
+    the successor-version link (its client-visible prefix depends on root_path, a proxy/sub-app
+    concern) -- the same lookup this package's docs/openapi/versions routes do.
+
+    Deprecation/Sunset only fill a gap (setdefault): a route that set its own wins. Our Link
+    value goes out as its own Link field (RFC 8288: multiple Link fields combine), so the
+    route's own Link header -- one line or several -- is never read or rewritten.
+    """
+    cached = _deprecation_route_classes.get(base_route_class)
+    if cached is not None:
+        return cached
+
+    class _DeprecationHeadersRoute(base_route_class):  # type: ignore[valid-type,misc]  # ty: ignore[unsupported-base]
+        def get_route_handler(self) -> Callable[[Request], Any]:
+            downstream = super().get_route_handler()
+            by_path: dict[str, dict[str, str]] = getattr(self.endpoint, _ATTR_DEPRECATION_HEADERS, {})
+            headers = by_path.get(self.path, {})
+
+            async def deprecation_headers_handler(request: Request) -> Response:
+                response: Response = await downstream(request)
+                for name, value in headers.items():
+                    if "{root_path}" in value:
+                        value = value.replace("{root_path}", request.scope.get("root_path", "").rstrip("/"))
+                    if name == "link":
+                        response.headers.append("link", value)
+                    else:
+                        response.headers.setdefault(name, value)
+                return response
+
+            return deprecation_headers_handler
+
+    _deprecation_route_classes[base_route_class] = _DeprecationHeadersRoute
+    return _DeprecationHeadersRoute
 
 
 class _AppRegistry:
@@ -156,6 +222,25 @@ class VersionFormat(str, Enum):
     CALVER = "calver"  # Accepts str (e.g., "2025-01-01", "v1")
 
 
+@dataclass(frozen=True)
+class VersionInfo:
+    """Per-version metadata for ``RouterVersioner(version_info=...)``, used only when that same
+    call also passes ``deprecation_headers=True``. Both fields are optional; only the ones you
+    set have an effect, and only on routes that reach their deprecation window. Nothing here
+    changes routing.
+
+    :param release_date: the calendar date this version goes live (``datetime.date`` or
+        ``datetime``). On a route whose ``deprecate_in`` is this version it becomes the RFC 9745
+        ``Deprecation`` header; on a route whose ``remove_in`` is this version, the RFC 8594
+        ``Sunset`` header.
+    :param guide: URL of this version's upgrade guide, emitted as
+        ``Link: <guide>; rel="deprecation"`` (RFC 9745) on routes deprecated at this version.
+    """
+
+    release_date: date | None = None
+    guide: str | None = None
+
+
 def _validate_api_version_arg(value: Any, param_name: str) -> None:
     if not isinstance(value, (tuple, str)):
         raise TypeError(
@@ -216,6 +301,8 @@ class RouterVersioner:
         include_versions_dashboard: bool = False,
         versions_dashboard_path: str | None = None,
         versions_dashboard_hook: Callable[[list[dict[str, Any]], str], str] | None = None,
+        deprecation_headers: bool = False,
+        version_info: dict[VersionT, VersionInfo] | None = None,
         sort_routes: bool = False,
         callback: Callable[[APIRouter, VersionT, str], None] | None = None,
         webhook_routers: list[APIRouter] | APIRouter | None = None,
@@ -256,6 +343,16 @@ class RouterVersioner:
         :param versions_dashboard_hook: Optional renderer replacing the built-in dashboard page. Receives the aggregated
             version models (the same dicts the /versions JSON returns) and the request root_path; must return the full HTML.
             App metadata is not passed: a hook that wants it reads app.title / app.version off its own app reference.
+        :param deprecation_headers: If True, every response of a route in its deprecation window carries standards-based
+            headers, built once at versionize() time: RFC 9745 'Deprecation' and 'Link: rel="deprecation"', RFC 8594
+            'Sunset', RFC 5829 'Link: rel="successor-version"'. Off by default; the dates and guide URLs come from
+            version_info. With no version_info only the successor-version link is emitted (it needs no config).
+        :param version_info: Optional mapping of version -> VersionInfo carrying that version's calendar date and/or
+            upgrade-guide URL, feeding the headers above: VersionInfo.release_date at deprecate_in -> 'Deprecation', at
+            remove_in -> 'Sunset'; VersionInfo.guide at deprecate_in -> 'Link: rel="deprecation"'. A version absent from
+            the map, or a VersionInfo field left None, simply yields nothing for that part (no warning). Has no effect
+            unless deprecation_headers is True; with it on, versionize() raises if a route's remove_in date precedes its
+            deprecate_in date. Keys must match the version_format in use.
         :param sort_routes: If True, sorts all routes alphabetically by path.
         :param callback: Optional hook invoked every time a versioned APIRouter is created.
         :param webhook_routers: A single APIRouter or a list of APIRouters containing webhook definitions
@@ -295,6 +392,8 @@ class RouterVersioner:
         self._include_versions_dashboard = include_versions_dashboard
         self._versions_dashboard_path = self._validate_route_path(versions_dashboard_path, "versions_dashboard_path")
         self._versions_dashboard_hook = versions_dashboard_hook
+        self._deprecation_headers = deprecation_headers
+        self._version_info = self._validate_version_info(version_info)
         self._sort_routes = sort_routes
         self._callback = callback
         self._webhook_routers: list[APIRouter] | None = (
@@ -327,6 +426,36 @@ class RouterVersioner:
             error_msg = f"{param_name} must start with '/', got {path!r}."
             raise ValueError(error_msg)
         return path
+
+    def _validate_version_info(
+        self, version_info: dict[VersionT, VersionInfo] | None
+    ) -> dict[VersionT, VersionInfo] | None:
+        if version_info is None:
+            return None
+        if not isinstance(version_info, dict):
+            raise TypeError(
+                f"version_info must be a dict mapping version -> VersionInfo, "
+                f"got {type(version_info).__name__!r} instead."
+            )
+        for key, value in version_info.items():
+            self._validate_version_type(key, "version_info key")
+            if not isinstance(value, VersionInfo):
+                raise TypeError(f"version_info[{key!r}] must be a VersionInfo, got {type(value).__name__!r} instead.")
+            if value.release_date is not None and not isinstance(value.release_date, date):
+                raise TypeError(
+                    f"version_info[{key!r}].release_date must be a datetime.date (or datetime), "
+                    f"got {type(value.release_date).__name__!r} instead."
+                )
+            if value.guide is not None:
+                if not isinstance(value.guide, str):
+                    raise TypeError(
+                        f"version_info[{key!r}].guide must be a str (URL), got {type(value.guide).__name__!r} instead."
+                    )
+                if "\n" in value.guide or "\r" in value.guide:
+                    # It is interpolated into a Link response header; a newline there is a
+                    # header-injection attempt or a typo. Fail here, not at response time.
+                    raise ValueError(f"version_info[{key!r}].guide must not contain a newline.")
+        return version_info
 
     def _validate_version_type(self, version: Any, route_path: str) -> None:
         if self._version_format == VersionFormat.SEMVER:
@@ -409,6 +538,7 @@ class RouterVersioner:
         self._versionized = True
 
         routes_by_version = self._get_routes_by_version()
+        self._validate_lifecycle_dates()
         versions = list(routes_by_version.keys())
         webhooks_by_version = self._get_webhooks_by_version()
 
@@ -425,7 +555,11 @@ class RouterVersioner:
 
             active_webhooks = self._resolve_webhooks_for_version(version, webhooks_by_version)
             version_router = self._build_version_router(
-                version=version, version_prefix=version_prefix, routes_by_key=routes_by_key, webhooks=active_webhooks
+                version=version,
+                version_prefix=version_prefix,
+                routes_by_key=routes_by_key,
+                webhooks=active_webhooks,
+                routes_by_version=routes_by_version,
             )
             if self._callback:
                 self._callback(version_router, version, version_prefix)
@@ -444,6 +578,7 @@ class RouterVersioner:
                 version_prefix=self._latest_prefix,
                 routes_by_key=latest_routes,
                 webhooks=latest_webhooks,
+                routes_by_version=routes_by_version,
             )
             if self._callback:
                 self._callback(latest_router, latest_version, self._latest_prefix)
@@ -580,6 +715,7 @@ class RouterVersioner:
         version_prefix: str,
         routes_by_key: dict[tuple[str, str], Any],
         webhooks: list[Any],
+        routes_by_version: dict[VersionT, dict[tuple[str, str], Any]],
     ) -> APIRouter:
         router = APIRouter(prefix=version_prefix, responses=self._app.router.responses)
 
@@ -596,7 +732,11 @@ class RouterVersioner:
 
         for route, active_methods in grouped_routes.values():
             self._add_route_to_router(
-                route=route, router=router, version=version, active_methods=active_methods or None
+                route=route,
+                router=router,
+                version=version,
+                active_methods=active_methods or None,
+                header_set=self._build_deprecation_headers(route, version, routes_by_version),
             )
 
         self._add_version_docs(router=router, version=version, version_prefix=version_prefix, webhooks=webhooks)
@@ -604,7 +744,12 @@ class RouterVersioner:
         return router
 
     def _add_route_to_router(
-        self, route: Any, router: APIRouter, version: VersionT, active_methods: set[str] | None = None
+        self,
+        route: Any,
+        router: APIRouter,
+        version: VersionT,
+        active_methods: set[str] | None = None,
+        header_set: dict[str, str] | None = None,
     ) -> None:
         source_route = self._unwrap_route(route)
         add_method: Callable[..., Any]
@@ -624,14 +769,30 @@ class RouterVersioner:
         # this, a router built with APIRouter(route_class=CustomRoute) would silently remount
         # every route as a plain APIRoute, dropping whatever get_route_handler() overrides.
         if isinstance(source_route, APIRoute):
-            filtered_kwargs["route_class_override"] = type(source_route)
+            route_class = type(source_route)
+            # header_set (built above) rides on the endpoint, keyed by the mounted path,
+            # because that is what _deprecation_route_class can still read after include_router
+            # rebuilds this route onto the app. WebSockets skip it: no response to decorate.
+            if header_set:
+                route_class = _deprecation_route_class(route_class)
+                by_path = getattr(source_route.endpoint, _ATTR_DEPRECATION_HEADERS, None)
+                if by_path is None:
+                    by_path = {}
+                    setattr(source_route.endpoint, _ATTR_DEPRECATION_HEADERS, by_path)  # noqa: B010
+                by_path[f"{router.prefix}{route.path}"] = header_set
+            filtered_kwargs["route_class_override"] = route_class
         # A sibling route may have taken over some of this route's original methods at this
         # version: mount only the methods still assigned to it, not its full original set.
         if active_methods is not None and "methods" in valid_params:
             filtered_kwargs["methods"] = active_methods
 
         deprecated_in_version = self._extract_version_attribute(route.endpoint, _ATTR_DEPRECATE_IN, route.path)
-        if deprecated_in_version is not None and self._version_gte(version, deprecated_in_version):
+        # add_api_websocket_route has no 'deprecated': a WebSocket route has no OpenAPI presence.
+        if (
+            "deprecated" in valid_params
+            and deprecated_in_version is not None
+            and self._version_gte(version, deprecated_in_version)
+        ):
             filtered_kwargs["deprecated"] = True
 
         # An empty string name causes an internal FastAPI error; drop it to use the default.
@@ -639,6 +800,95 @@ class RouterVersioner:
             filtered_kwargs.pop("name")
 
         add_method(**filtered_kwargs)
+
+    def _version_field(self, version: VersionT | None, field: str) -> Any:
+        if version is None or self._version_info is None:
+            return None
+        info = self._version_info.get(version)
+        return getattr(info, field) if info is not None else None
+
+    def _validate_lifecycle_dates(self) -> None:
+        """Reject a route whose Sunset would precede its Deprecation: RFC 9745 forbids it.
+        Only relevant when the headers are on and version_info dates both boundaries.
+        """
+        if not self._deprecation_headers or self._version_info is None:
+            return
+        for router in self._routers:
+            for route in self._iter_routes_flat(router.routes):
+                deprecate_in = self._extract_version_attribute(route.endpoint, _ATTR_DEPRECATE_IN, route.path)
+                remove_in = self._extract_version_attribute(route.endpoint, _ATTR_REMOVE_IN, route.path)
+                if deprecate_in is None or remove_in is None:
+                    continue
+                deprecate_date = self._version_field(deprecate_in, "release_date")
+                remove_date = self._version_field(remove_in, "release_date")
+                if deprecate_date is not None and remove_date is not None and remove_date < deprecate_date:
+                    raise ValueError(
+                        f"version_info: remove_in {remove_in!r} ({remove_date}) is earlier than "
+                        f"deprecate_in {deprecate_in!r} ({deprecate_date}) for route {route.path!r}. "
+                        "RFC 9745 requires the Sunset date not to precede the Deprecation date."
+                    )
+
+    def _build_deprecation_headers(
+        self,
+        route: Any,
+        version: VersionT,
+        routes_by_version: dict[VersionT, dict[tuple[str, str], Any]],
+    ) -> dict[str, str] | None:
+        """The header set for one route in one version, or None when deprecation_headers is off,
+        the route is not (yet) deprecated at this version, or there is nothing to say. Keys are
+        lowercased. Values are final except the successor-version link, which carries a literal
+        "{root_path}" token that _deprecation_route_class's handler expands per request.
+        """
+        if not self._deprecation_headers:
+            return None
+        deprecate_in = self._extract_version_attribute(route.endpoint, _ATTR_DEPRECATE_IN, route.path)
+        if deprecate_in is None or not self._version_gte(version, deprecate_in):
+            return None
+
+        headers: dict[str, str] = {}
+
+        deprecate_date = self._version_field(deprecate_in, "release_date")
+        if deprecate_date is not None:
+            headers["deprecation"] = f"@{_to_epoch_seconds(deprecate_date)}"
+        remove_in = self._extract_version_attribute(route.endpoint, _ATTR_REMOVE_IN, route.path)
+        remove_date = self._version_field(remove_in, "release_date")
+        if remove_date is not None:
+            headers["sunset"] = formatdate(_to_epoch_seconds(remove_date), usegmt=True)
+
+        links: list[str] = []
+        successor_prefix = self._find_successor_prefix(route, version, routes_by_version)
+        if successor_prefix is not None:
+            # {root_path} is expanded per request in _deprecation_route_class's handler.
+            links.append(f'<{{root_path}}{successor_prefix}{route.path}>; rel="successor-version"')
+        guide = self._version_field(deprecate_in, "guide")
+        if guide is not None:
+            links.append(f'<{guide}>; rel="deprecation"')
+        if links:
+            headers["link"] = ", ".join(links)
+
+        return headers or None
+
+    def _find_successor_prefix(
+        self,
+        route: Any,
+        version: VersionT,
+        routes_by_version: dict[VersionT, dict[tuple[str, str], Any]],
+    ) -> str | None:
+        """The prefix of the first version after `version` that still serves any of this
+        route's (path, method) keys. None when nothing later carries it (removed, or this is
+        the last version). routes_by_version is ordered by ascending version.
+        """
+        keys = self._get_route_keys(route).keys()
+        seen_current = False
+        for candidate_version, routes_by_key in routes_by_version.items():
+            if candidate_version == version:
+                seen_current = True
+                continue
+            if not seen_current:
+                continue
+            if keys & routes_by_key.keys():
+                return self._format_string(self._prefix_format, candidate_version)
+        return None
 
     def _add_version_docs(self, router: APIRouter, version: VersionT, version_prefix: str, webhooks: list[Any]) -> None:
         doc_version_str = self._format_string(self._semantic_version_format, version)
