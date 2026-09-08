@@ -108,7 +108,7 @@ def test_unsupported_route_type_raises_error() -> None:
     versioner = RouterVersioner(app=app, routers=router, version_format=VersionFormat.SEMVER)
 
     with pytest.raises(TypeError, match="Unsupported route type: UnsupportedRoute"):
-        versioner._add_route_to_router(
+        versioner._builder._add_route(
             route=UnsupportedRoute(),  # type: ignore
             router=router,
             version=(1, 0),
@@ -340,34 +340,36 @@ def test_routers_as_list() -> None:
 
 
 def test_version_gte_mismatched_types_returns_false() -> None:
-    """_version_gte returns False for values that aren't both tuples or both strings.
+    """version_gte returns False for values that aren't both tuples or both strings.
 
-    Defensive branch: normally unreachable via the public API, since _validate_version_type
+    Defensive branch: normally unreachable via the public API, since VersionScheme.validate
     enforces a single, consistent VersionT type (tuple for SEMVER, str for CALVER) per
     RouterVersioner instance.
     """
-    assert RouterVersioner._version_gte((1, 0), "2025-01-01") is False
-    assert RouterVersioner._version_gte("2025-01-01", (1, 0)) is False
+    from fastapi_router_versioning._scheme import version_gte
+
+    assert version_gte((1, 0), "2025-01-01") is False
+    assert version_gte("2025-01-01", (1, 0)) is False
 
 
 def test_iter_routes_flat_fallback_without_route_context_fn() -> None:
     """Covers the _route_contexts_fn=None fallback (legacy FastAPI < 0.137.2).
 
     Patches the module-level variable to None to simulate an environment where
-    iter_route_contexts is not available, then verifies that _iter_routes_flat
+    iter_route_contexts is not available, then verifies that iter_routes_flat
     yields the raw route list unchanged.
     """
-    import fastapi_router_versioning.versioner as versioner_module
+    import fastapi_router_versioning._compat as compat_module
 
     router = APIRouter()
 
     @router.get("/ping")
     def ping() -> dict[str, str]: ...
 
-    original_fn = versioner_module._route_contexts_fn
+    original_fn = compat_module._route_contexts_fn
     try:
-        versioner_module._route_contexts_fn = None
-        result = list(versioner_module.RouterVersioner._iter_routes_flat(router.routes))
+        compat_module._route_contexts_fn = None
+        result = list(compat_module.iter_routes_flat(router.routes))
         assert result == list(router.routes)
     finally:
-        versioner_module._route_contexts_fn = original_fn
+        compat_module._route_contexts_fn = original_fn

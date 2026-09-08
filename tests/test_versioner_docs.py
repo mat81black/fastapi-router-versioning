@@ -528,9 +528,9 @@ def test_openapi_cache_invalidated_on_route_change() -> None:
 
     import fastapi.openapi.utils as openapi_utils
 
-    import fastapi_router_versioning.versioner as versioner_mod
+    import fastapi_router_versioning._compat as compat_mod
 
-    if versioner_mod._route_contexts_fn is None:
+    if compat_mod._route_contexts_fn is None:
         pytest.skip("_get_routes_version not available (FastAPI < 0.137.2)")  # pragma: no cover
 
     app = FastAPI()
