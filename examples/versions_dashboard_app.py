@@ -7,8 +7,9 @@ Enables both discovery surfaces side by side:
 - GET /dashboard     HTML page with the same versions and links to their docs
                      (include_versions_dashboard)
 
-The dashboard works with or without the JSON route. Its path moves with
-versions_dashboard_path, and versions_dashboard_hook(version_models, root_path) -> str
+Both also list a version's migration guide when version_info gives one for it (this needs
+no deprecation_headers). The dashboard works with or without the JSON route. Its path moves
+with versions_dashboard_path, and versions_dashboard_hook(version_models, root_path) -> str
 replaces the built-in page entirely if you want your own markup.
 
 Run:
@@ -20,7 +21,7 @@ then open http://127.0.0.1:8000/dashboard
 
 from fastapi import APIRouter, FastAPI
 
-from fastapi_router_versioning import RouterVersioner, VersionFormat, api_version
+from fastapi_router_versioning import RouterVersioner, VersionFormat, VersionInfo, api_version
 
 app = FastAPI(title="Versions Dashboard Demo")
 
@@ -52,5 +53,6 @@ versioner = RouterVersioner(
     latest_prefix="/latest",
     include_versions_route=True,
     include_versions_dashboard=True,
+    version_info={(2, 0): VersionInfo(guide="https://api.example.com/docs/upgrade/v2")},
 )
 versioner.versionize()

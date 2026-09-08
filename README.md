@@ -167,7 +167,7 @@ for SemVer, `str` for CalVer.
 | `versions_dashboard_path` | `str \| None` | `None` | Path for that page (defaults to `/dashboard`); must start with `/` |
 | `versions_dashboard_hook` | `Callable[[list[dict], str], str] \| None` | `None` | Replace the built-in dashboard page; receives `(version_models, root_path)`, returns HTML |
 | `deprecation_headers` | `bool` | `False` | Emit `Deprecation` / `Sunset` / `Link` headers on responses of routes in their deprecation window. See [Deprecation headers](#deprecation-headers) |
-| `version_info` | `dict[VersionT, VersionInfo] \| None` | `None` | Per-version `VersionInfo(release_date=…, guide=…)` feeding those headers with dates and guide URLs. No effect unless `deprecation_headers` is `True` |
+| `version_info` | `dict[VersionT, VersionInfo] \| None` | `None` | Per-version `VersionInfo(release_date=…, guide=…)` feeding those headers, and the `/versions` / dashboard listings. See [`VersionInfo` reference](#versioninfo-reference) |
 | `sort_routes` | `bool` | `False` | Sort routes alphabetically by path within each version |
 | `callback` | `Callable[[APIRouter, VersionT, str], None] \| None` | `None` | Called once per versioned router, right before it's included in the app |
 | `webhook_routers` | `APIRouter \| list[APIRouter] \| None` | `None` | Router(s) with webhook definitions annotated via `@api_version`; each version's schema shows only the webhooks active in it |
@@ -211,13 +211,15 @@ VersionInfo(release_date=None, guide=None)
 ```
 
 Calendar metadata about one version, passed to `RouterVersioner` as
-`version_info={version: VersionInfo(...)}`. It is read only when `deprecation_headers=True`,
-and it never affects routing; see [Deprecation headers](#deprecation-headers).
+`version_info={version: VersionInfo(...)}`. It never affects routing. Both fields feed the
+deprecation headers, and only when `deprecation_headers=True`; see
+[Deprecation headers](#deprecation-headers). `guide` is also listed for the version on
+`GET /versions` and the dashboard, which don't need that flag.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `release_date` | `date \| datetime \| None` | `None` | The date this version goes live. Becomes the `Deprecation` header on routes whose `deprecate_in` is this version, and the `Sunset` header on routes whose `remove_in` is this version |
-| `guide` | `str \| None` | `None` | URL of this version's upgrade guide, emitted as `Link: <guide>; rel="deprecation"` on routes deprecated at this version |
+| `guide` | `str \| None` | `None` | URL of this version's upgrade guide. Becomes the `Link: <guide>; rel="deprecation"` header on routes deprecated at this version, and is listed as `guide_url` for the version on `GET /versions` and the dashboard |
 
 `VersionInfo` is frozen, and both fields are optional.
 
@@ -322,6 +324,9 @@ GET /versions
 Pass `versions_route_path="/api-versions"` (any path starting with `/`) to mount the endpoint
 somewhere other than `/versions`.
 
+A version whose `VersionInfo` sets `guide` also carries a `"guide_url"` in its entry, sent as
+given (an external URL, with no `root_path` prefix).
+
 If several `RouterVersioner` instances share one app and all set `include_versions_route=True`,
 `/versions` is mounted once and lists every instance's versions together, instead of the
 first instance shadowing the rest (see [Multiple routers](#multiple-routers)). That single
@@ -330,12 +335,13 @@ endpoint is mounted by the first of those instances, which also fixes its path: 
 
 Set `include_versions_dashboard=True` for an HTML counterpart: a page (at `/dashboard` by
 default, moved with `versions_dashboard_path`) headed by the app's `title` and `version` and
-listing the same versions with links to each one's Swagger, ReDoc and `openapi.json`. It
-aggregates across instances and follows the same first-instance-wins rule, works whether or
-not `include_versions_route` is also on, and is kept out of the OpenAPI schema. The built-in
-page is plain; pass `versions_dashboard_hook(version_models, root_path) -> str` to render
-your own instead (it isn't handed the app metadata, so read `app.title` / `app.version` off
-your own app reference if you want them).
+listing the same versions with links to each one's Swagger, ReDoc, `openapi.json`, and its
+`guide` when `version_info` gives one. It aggregates across instances and follows the same
+first-instance-wins rule, works whether or not `include_versions_route` is also on, and is
+kept out of the OpenAPI schema. The built-in page is plain; pass
+`versions_dashboard_hook(version_models, root_path) -> str` to render your own instead (it
+isn't handed the app metadata, so read `app.title` / `app.version` off your own app reference
+if you want them).
 
 ### Custom URL format
 

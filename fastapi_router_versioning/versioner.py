@@ -146,7 +146,12 @@ def _render_versions_dashboard(versions: list[dict[str, Any]], title: str, versi
         label = html.escape(str(model["version"]))
         links = [
             f'<a href="{html.escape(model[key])}">{text}</a>'
-            for key, text in (("swagger_url", "Swagger"), ("redoc_url", "ReDoc"), ("openapi_url", "OpenAPI"))
+            for key, text in (
+                ("swagger_url", "Swagger"),
+                ("redoc_url", "ReDoc"),
+                ("openapi_url", "OpenAPI"),
+                ("guide_url", "Guide"),
+            )
             if key in model
         ]
         docs = f'<span class="links">{"".join(links)}</span>' if links else '<span class="none">no docs</span>'
@@ -224,17 +229,17 @@ class VersionFormat(str, Enum):
 
 @dataclass(frozen=True)
 class VersionInfo:
-    """Per-version metadata for ``RouterVersioner(version_info=...)``, used only when that same
-    call also passes ``deprecation_headers=True``. Both fields are optional; only the ones you
-    set have an effect, and only on routes that reach their deprecation window. Nothing here
-    changes routing.
+    """Per-version metadata for ``RouterVersioner(version_info=...)``. Both fields are optional;
+    only the ones you set have an effect. Nothing here changes routing.
 
     :param release_date: the calendar date this version goes live (``datetime.date`` or
-        ``datetime``). On a route whose ``deprecate_in`` is this version it becomes the RFC 9745
-        ``Deprecation`` header; on a route whose ``remove_in`` is this version, the RFC 8594
-        ``Sunset`` header.
-    :param guide: URL of this version's upgrade guide, emitted as
-        ``Link: <guide>; rel="deprecation"`` (RFC 9745) on routes deprecated at this version.
+        ``datetime``). Used only with ``deprecation_headers=True``: on a route whose
+        ``deprecate_in`` is this version it becomes the RFC 9745 ``Deprecation`` header; on a
+        route whose ``remove_in`` is this version, the RFC 8594 ``Sunset`` header.
+    :param guide: URL of this version's upgrade guide. With ``deprecation_headers=True`` it is
+        emitted as ``Link: <guide>; rel="deprecation"`` (RFC 9745) on routes deprecated at this
+        version; it is also listed for the version on the ``/versions`` JSON endpoint and the
+        versions dashboard, regardless of ``deprecation_headers``.
     """
 
     release_date: date | None = None
@@ -336,8 +341,9 @@ class RouterVersioner:
             the endpoint is mounted once by the first of them to enable it, and that instance fixes its path (None or
             not); a different versions_route_path on a later instance is ignored.
         :param include_versions_dashboard: If True, adds an HTML page listing every active version with links to its
-            docs. The built-in page shows app.title and app.version. Same aggregated data as the /versions JSON route,
-            but independent of it; kept out of the OpenAPI schema.
+            docs (and to its VersionInfo.guide, when version_info gives one). The built-in page shows app.title and
+            app.version. Same aggregated data as the /versions JSON route, but independent of it; kept out of the
+            OpenAPI schema.
         :param versions_dashboard_path: Path for that page; defaults to '/dashboard' when None. Must start with '/'.
             Has no effect unless include_versions_dashboard is True. Same first-instance-wins rule as versions_route_path.
         :param versions_dashboard_hook: Optional renderer replacing the built-in dashboard page. Receives the aggregated
@@ -348,11 +354,12 @@ class RouterVersioner:
             'Sunset', RFC 5829 'Link: rel="successor-version"'. Off by default; the dates and guide URLs come from
             version_info. With no version_info only the successor-version link is emitted (it needs no config).
         :param version_info: Optional mapping of version -> VersionInfo carrying that version's calendar date and/or
-            upgrade-guide URL, feeding the headers above: VersionInfo.release_date at deprecate_in -> 'Deprecation', at
-            remove_in -> 'Sunset'; VersionInfo.guide at deprecate_in -> 'Link: rel="deprecation"'. A version absent from
-            the map, or a VersionInfo field left None, simply yields nothing for that part (no warning). Has no effect
-            unless deprecation_headers is True; with it on, versionize() raises if a route's remove_in date precedes its
-            deprecate_in date. Keys must match the version_format in use.
+            upgrade-guide URL. VersionInfo.release_date and VersionInfo.guide feed the headers above (release_date at
+            deprecate_in -> 'Deprecation', at remove_in -> 'Sunset'; guide at deprecate_in -> 'Link: rel="deprecation"')
+            only when deprecation_headers is True, and with it on versionize() raises if a route's remove_in date precedes
+            its deprecate_in date. VersionInfo.guide is also listed per version on the '/versions' JSON endpoint and the
+            versions dashboard, regardless of deprecation_headers. A version absent from the map, or a VersionInfo field
+            left None, simply yields nothing for that part (no warning). Keys must match the version_format in use.
         :param sort_routes: If True, sorts all routes alphabetically by path.
         :param callback: Optional hook invoked every time a versioned APIRouter is created.
         :param webhook_routers: A single APIRouter or a list of APIRouters containing webhook definitions
@@ -1060,6 +1067,12 @@ class RouterVersioner:
                 and self._app.openapi_url is not None
             ):
                 version_model["redoc_url"] = f"{root_path}{version_prefix}{self._redoc_url}"
+
+            # VersionInfo.guide is an external URL (an upgrade guide page), not an app path:
+            # emitted verbatim, no root_path prefix, independent of deprecation_headers.
+            guide = self._version_field(version, "guide")
+            if guide is not None:
+                version_model["guide_url"] = guide
 
             version_models.append(version_model)
 
