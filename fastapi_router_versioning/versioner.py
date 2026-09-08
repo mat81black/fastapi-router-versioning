@@ -1,10 +1,3 @@
-"""RouterVersioner: the package's entry point.
-
-Normalizes and validates the configuration, then drives one versionize() run: group the
-routes by version, build a router per version, mount them on the app, and add the shared
-discovery routes. The work itself lives in the private modules alongside this one.
-"""
-
 from collections.abc import Callable
 from typing import Any
 
@@ -26,6 +19,13 @@ from ._versions import VersionFormat, VersionInfo, VersionT, version_field
 
 
 class RouterVersioner:
+    """Versions a FastAPI app in place: one router per active version, each mounted under its
+    own prefix with its own OpenAPI schema and documentation pages.
+
+    The configuration is validated here, in __init__; nothing is mounted until versionize() is
+    called, and it may only be called once.
+    """
+
     def __init__(
         self,
         app: FastAPI,
@@ -169,6 +169,11 @@ class RouterVersioner:
         package makes no attempt to undo that.
 
         :return: The list of versions that were actually mounted.
+        :raises ValueError: if a route's ``@api_version`` does not match the configured
+            ``version_format``, or if ``version_info`` dates a route's ``remove_in`` before its
+            ``deprecate_in`` while ``deprecation_headers`` is on.
+        :raises RuntimeError: if called a second time on this instance, or if a prefix is
+            already taken, by this instance or by another RouterVersioner on the same app.
         """
         if self._versionized:
             raise RuntimeError(

@@ -58,8 +58,6 @@ def future_route() -> dict[str, str]:
     return {"status": "active", "message": "Welcome to the December release!"}
 
 
-# POST /items with an invalid "quantity" (e.g. "not-a-number") returns FastAPI's
-# default 422 validation error.
 @router.post("/items")
 @api_version("2025-01-01")
 def create_item(body: CreateItemRequest) -> dict[str, str]:

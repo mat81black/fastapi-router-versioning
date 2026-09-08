@@ -83,8 +83,6 @@ def settings_post_v2() -> dict[str, str]:
     return {"handler": "settings_post_v2", "message": "I took over POST /settings from v2.0."}
 
 
-# POST /items with an invalid "quantity" (e.g. "not-a-number") returns FastAPI's
-# default 422 validation error.
 @router.post("/items")
 @api_version((1, 0))
 def create_item(body: CreateItemRequest) -> dict[str, str]:

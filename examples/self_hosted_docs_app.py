@@ -44,8 +44,6 @@ def list_items() -> dict[str, list[str]]:
     return {"items": []}
 
 
-# POST /items with an invalid "quantity" (e.g. "not-a-number") returns FastAPI's
-# default 422 validation error.
 @router.post("/items")
 @api_version((1, 0))
 def create_item(body: CreateItemRequest) -> dict[str, str]:

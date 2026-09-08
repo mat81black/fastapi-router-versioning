@@ -1,7 +1,3 @@
-"""Version types and the @api_version decorator: what a version is, and how a route declares
-the one it belongs to. Nothing here knows about routing, docs or FastAPI apps.
-"""
-
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
@@ -17,12 +13,13 @@ _ATTR_REMOVE_IN = "_remove_in_version"
 
 
 class VersionFormat(str, Enum):
-    """
-    Defines the allowed versioning strategy for the RouterVersioner.
+    """The versioning strategy a RouterVersioner enforces, and with it the type every version
+    must have: ``SEMVER`` takes ``tuple[int, int]`` (e.g. ``(1, 0)``), ``CALVER`` takes ``str``
+    (e.g. ``"2025-01-01"``, ``"v1"``).
     """
 
-    SEMVER = "semver"  # Accepts tuple[int, int] (e.g., (1, 0))
-    CALVER = "calver"  # Accepts str (e.g., "2025-01-01", "v1")
+    SEMVER = "semver"
+    CALVER = "calver"
 
 
 @dataclass(frozen=True)
@@ -59,13 +56,21 @@ def api_version(
     deprecate_in: VersionT | None = None,
     remove_in: VersionT | None = None,
 ) -> Callable[[CallableT], CallableT]:
-    """
-    Decorator to annotate API routes with their specific version.
+    """Annotate an endpoint with the version that introduces it, and optionally the versions
+    that deprecate and remove it.
 
-    Accepts both Semantic Versioning (e.g., tuple (1, 0)) and Calendar Versioning
-    or strings (e.g., "2025-01-01", "v1").
-    Metadata is injected directly into the wrapper function, allowing the
-    RouterVersioner to organize the routes dynamically.
+    The values are set as attributes on the decorated function, which is returned unchanged:
+    there is no wrapper, so the signature FastAPI introspects stays the original one.
+
+    :param version: the version this route first appears in. ``tuple[int, int]`` under
+        ``VersionFormat.SEMVER``, ``str`` under ``VersionFormat.CALVER``.
+    :param deprecate_in: from this version on the route is flagged ``deprecated`` in the
+        OpenAPI schema, and carries deprecation headers when ``RouterVersioner`` was built with
+        ``deprecation_headers=True``. It keeps being served.
+    :param remove_in: the first version that no longer serves the route.
+    :raises TypeError: if an argument is neither a tuple nor a str, raised at decoration time.
+        Whether the type matches the configured ``VersionFormat`` is checked later, by
+        ``RouterVersioner``.
     """
     _validate_api_version_arg(version, "version")
     if deprecate_in is not None:
@@ -88,9 +93,8 @@ def api_version(
 
 
 def version_field(version_info: dict[VersionT, VersionInfo] | None, version: VersionT | None, field: str) -> Any:
-    """One VersionInfo field for one version, or None when there is no map, no version, or no
-    entry for it. Both the deprecation headers and the /versions payload look versions up this
-    way, so the "absent means nothing to say" rule lives in one place.
+    """The value of one VersionInfo field, or None when there is no map, no version, or no
+    entry: "absent means nothing to say" is decided here instead of at each call site.
     """
     if version is None or version_info is None:
         return None

@@ -1,10 +1,3 @@
-"""Standards-based deprecation signalling: RFC 9745 Deprecation, RFC 8594 Sunset, RFC 8288 /
-RFC 5829 Link relations.
-
-Everything a deprecated route says about itself is decided here, once, at versionize() time;
-the only per-request work is the route class installed by deprecation_route_class().
-"""
-
 from collections.abc import Callable
 from datetime import date, datetime, timezone
 from email.utils import formatdate
@@ -42,8 +35,8 @@ _route_classes: WeakKeyDictionary[type[APIRoute], type[APIRoute]] = WeakKeyDicti
 def deprecation_route_class(base_route_class: type[APIRoute]) -> type[APIRoute]:
     """One subclass of base_route_class whose handler adds this package's deprecation headers
     to every response. It reads the header set off its own endpoint, keyed by the mounted path
-    (stashed there by VersionRouterBuilder._add_route before mounting). Off the endpoint, not the route
-    instance, because that is what survives include_router rebuilding the route onto the app:
+    (put there by attach_headers before mounting). Off the endpoint, not the route instance,
+    because that is what survives include_router rebuilding the route onto the app:
     the endpoint object and the path carry over, a fresh instance's attributes do not.
     Subclassing keeps the base class's own get_route_handler() in the chain.
 
@@ -85,9 +78,6 @@ def deprecation_route_class(base_route_class: type[APIRoute]) -> type[APIRoute]:
 
 
 def attach_headers(endpoint: Any, mounted_path: str, header_set: dict[str, str]) -> None:
-    """Stash one path's header set on the endpoint, where the route class can still find it
-    after include_router has rebuilt the route onto the app.
-    """
     by_path = getattr(endpoint, _ATTR_DEPRECATION_HEADERS, None)
     if by_path is None:
         by_path = {}

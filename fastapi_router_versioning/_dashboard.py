@@ -1,7 +1,3 @@
-"""The built-in versions dashboard page. One self-contained HTML document, no external assets;
-versions_dashboard_hook replaces it wholesale.
-"""
-
 import html
 
 from typing import Any

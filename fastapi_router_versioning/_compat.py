@@ -1,7 +1,3 @@
-"""The one place that adapts to FastAPI's own route representation, which changed shape in
-0.137.2. Everything else in this package works on whatever these two functions hand back.
-"""
-
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -15,10 +11,7 @@ _route_contexts_fn: Callable[..., Any] | None = getattr(fastapi.routing, "iter_r
 
 
 def iter_routes_flat(routes: list[Any]) -> Iterator[Any]:
-    """
-    Flattens the route tree using iter_route_contexts (FastAPI >= 0.137.2),
-    or yields the original flat list for older versions.
-    """
+    """Flattens the route tree, or yields it unchanged where iter_route_contexts is missing."""
     if _route_contexts_fn is None:
         yield from routes
         return

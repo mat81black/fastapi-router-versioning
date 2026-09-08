@@ -150,7 +150,6 @@ def test_openapi_hook_is_applied_to_schema() -> None:
 
 
 def test_openapi_hook_none_does_not_affect_schema() -> None:
-    """When openapi_hook is None (default), the schema is returned unmodified."""
     app = FastAPI()
     router = APIRouter()
 
@@ -501,7 +500,6 @@ def test_openapi_callbacks_are_propagated_to_versioned_routes() -> None:
 
 
 def test_openapi_schema_is_cached() -> None:
-    """The schema is generated only once; subsequent requests use the cache."""
     from unittest.mock import patch
 
     import fastapi.openapi.utils as openapi_utils

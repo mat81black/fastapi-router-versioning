@@ -1,7 +1,3 @@
-"""Each version's own openapi.json, Swagger UI and ReDoc pages, plus the schema cache behind
-them and the URLs at which they answer.
-"""
-
 from collections.abc import Callable
 from enum import Enum
 from typing import Any, TypeAlias
@@ -174,11 +170,12 @@ class DocsMounter:
             else:
                 schema = self._schemas_cache[cache_key]
 
-            # root_path is per-request: shallow copy to avoid polluting the cache
             root_path = req.scope.get("root_path", "").rstrip("/")
             if root_path and getattr(self._app, "root_path_in_servers", True):
                 server_urls = {s.get("url") for s in schema.get("servers", [])}
                 if root_path not in server_urls:
+                    # root_path is per-request: copy before adding the server entry, or the
+                    # cached schema would carry one request's prefix into every other request.
                     schema = dict(schema)
                     schema["servers"] = [{"url": root_path}] + schema.get("servers", [])
 

@@ -19,8 +19,6 @@ app = FastAPI(
     description="Demonstrates per-version webhook definitions using webhook_routers.",
 )
 
-# --- Regular routes ---
-
 router = APIRouter()
 
 
@@ -47,15 +45,12 @@ def get_items() -> dict[str, object]:
     return {"items": ["a", "b"]}
 
 
-# POST /items with an invalid "quantity" (e.g. "not-a-number") returns FastAPI's
-# default 422 validation error.
 @router.post("/items")
 @api_version((1, 0))
 def create_item(body: CreateItemRequest) -> dict[str, str]:
     return {"name": body.name, "quantity": str(body.quantity)}
 
 
-# --- Webhook definitions ---
 # Webhooks document outbound calls your API makes to subscriber URLs.
 # Annotate them with @api_version just like regular routes.
 
@@ -93,8 +88,6 @@ def on_payment_received(body: dict[str, str]) -> None:
     Fired when a payment is confirmed. Removed in v2 — subscribe to order-created instead.
     """
 
-
-# --- Versionize ---
 
 versioner = RouterVersioner(
     app=app,

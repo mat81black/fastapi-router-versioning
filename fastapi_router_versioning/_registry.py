@@ -1,8 +1,3 @@
-"""What several RouterVersioner instances sharing one FastAPI app have to agree on: which
-prefixes are taken, who contributes to the aggregated /versions payload, and which of them
-mounted the shared /versions and dashboard routes.
-"""
-
 from collections.abc import Callable
 from typing import Any
 from weakref import WeakKeyDictionary
