@@ -162,9 +162,9 @@ for SemVer, `str` for CalVer.
 | `include_version_docs` | `bool` | `True` | Create per-version Swagger UI and ReDoc pages |
 | `include_version_openapi_route` | `bool` | `True` | Create a per-version `openapi.json` route |
 | `include_versions_route` | `bool` | `False` | Add a `GET /versions` endpoint listing all active versions |
-| `versions_route_path` | `str \| None` | `None` | Path for that endpoint (defaults to `/versions`); must start with `/` |
+| `versions_route_path` | `str` | `/versions` | Path for that endpoint; must start with `/` |
 | `include_versions_dashboard` | `bool` | `False` | Add an HTML page listing all active versions with links to their docs |
-| `versions_dashboard_path` | `str \| None` | `None` | Path for that page (defaults to `/dashboard`); must start with `/` |
+| `versions_dashboard_path` | `str` | `/dashboard` | Path for that page; must start with `/` |
 | `versions_dashboard_hook` | `Callable[[list[dict], str], str] \| None` | `None` | Replace the built-in dashboard page; receives `(version_models, root_path)`, returns HTML |
 | `deprecation_headers` | `bool` | `False` | Emit `Deprecation` / `Sunset` / `Link` headers on responses of routes in their deprecation window. See [Deprecation headers](#deprecation-headers) |
 | `version_info` | `dict[VersionT, VersionInfo] \| None` | `None` | Per-version `VersionInfo(release_date=…, guide=…)` feeding those headers, and the `/versions` / dashboard listings. See [`VersionInfo` reference](#versioninfo-reference) |

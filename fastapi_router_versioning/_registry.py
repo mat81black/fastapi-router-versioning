@@ -75,31 +75,27 @@ def add_version_provider(app: FastAPI, provider: Callable[[str], list[dict[str, 
     get_app_registry(app).version_providers.append(provider)
 
 
-def mount_versions_route(app: FastAPI, versions_route_path: str | None) -> None:
+def mount_versions_route(app: FastAPI, versions_route_path: str) -> None:
     registry = get_app_registry(app)
     if registry.versions_route_mounted:
         return
     registry.versions_route_mounted = True
 
-    route_path = versions_route_path or "/versions"
-
-    @app.get(route_path, tags=["Versions"], response_class=JSONResponse)
+    @app.get(versions_route_path, tags=["Versions"], response_class=JSONResponse)
     def get_versions(request: Request) -> dict[str, Any]:
         root_path = request.scope.get("root_path", "").rstrip("/")
         return {"versions": aggregate_version_models(registry, root_path)}
 
 
 def mount_versions_dashboard(
-    app: FastAPI, versions_dashboard_path: str | None, hook: Callable[[list[dict[str, Any]], str], str] | None
+    app: FastAPI, versions_dashboard_path: str, hook: Callable[[list[dict[str, Any]], str], str] | None
 ) -> None:
     registry = get_app_registry(app)
     if registry.versions_dashboard_mounted:
         return
     registry.versions_dashboard_mounted = True
 
-    route_path = versions_dashboard_path or "/dashboard"
-
-    @app.get(route_path, tags=["Versions"], response_class=HTMLResponse, include_in_schema=False)
+    @app.get(versions_dashboard_path, tags=["Versions"], response_class=HTMLResponse, include_in_schema=False)
     def get_versions_dashboard(request: Request) -> HTMLResponse:
         root_path = request.scope.get("root_path", "").rstrip("/")
         models = aggregate_version_models(registry, root_path)

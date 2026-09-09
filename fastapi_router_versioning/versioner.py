@@ -38,9 +38,9 @@ class RouterVersioner:
         include_version_docs: bool = True,
         include_version_openapi_route: bool = True,
         include_versions_route: bool = False,
-        versions_route_path: str | None = None,
+        versions_route_path: str = "/versions",
         include_versions_dashboard: bool = False,
-        versions_dashboard_path: str | None = None,
+        versions_dashboard_path: str = "/dashboard",
         versions_dashboard_hook: Callable[[list[dict[str, Any]], str], str] | None = None,
         deprecation_headers: bool = False,
         version_info: dict[VersionT, VersionInfo] | None = None,
@@ -72,15 +72,15 @@ class RouterVersioner:
         :param include_version_docs: If True, creates isolated Swagger/ReDoc pages for each version.
         :param include_version_openapi_route: If True, creates an independent openapi.json route for each version.
         :param include_versions_route: If True, adds a 'GET /versions' endpoint returning info on all active API versions.
-        :param versions_route_path: Path for that endpoint; defaults to '/versions' when None. Must start with '/'.
+        :param versions_route_path: Path for that endpoint; defaults to '/versions'. Must be a str starting with '/'.
             Has no effect unless include_versions_route is True. When several RouterVersioner instances share one app,
-            the endpoint is mounted once by the first of them to enable it, and that instance fixes its path (None or
-            not); a different versions_route_path on a later instance is ignored.
+            the endpoint is mounted once by the first of them to enable it, and that instance fixes its path; a
+            different versions_route_path on a later instance is ignored.
         :param include_versions_dashboard: If True, adds an HTML page listing every active version with links to its
             docs (and to its VersionInfo.guide, when version_info gives one). The built-in page shows app.title and
             app.version. Same aggregated data as the /versions JSON route, but independent of it; kept out of the
             OpenAPI schema.
-        :param versions_dashboard_path: Path for that page; defaults to '/dashboard' when None. Must start with '/'.
+        :param versions_dashboard_path: Path for that page; defaults to '/dashboard'. Must be a str starting with '/'.
             Has no effect unless include_versions_dashboard is True. Same first-instance-wins rule as versions_route_path.
         :param versions_dashboard_hook: Optional renderer replacing the built-in dashboard page. Receives the aggregated
             version models (the same dicts the /versions JSON returns) and the request root_path; must return the full HTML.
@@ -153,8 +153,8 @@ class RouterVersioner:
         self._versionized = False
 
     @staticmethod
-    def _validate_route_path(path: str | None, param_name: str) -> str | None:
-        if path is not None and not path.startswith("/"):
+    def _validate_route_path(path: str, param_name: str) -> str:
+        if not isinstance(path, str) or not path.startswith("/"):
             error_msg = f"{param_name} must start with '/', got {path!r}."
             raise ValueError(error_msg)
         return path

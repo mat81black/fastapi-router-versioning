@@ -139,7 +139,7 @@ def test_versions_route_path_is_ignored_when_route_is_disabled() -> None:
     assert "/versions" not in paths
 
 
-def test_versions_route_path_first_non_none_value_wins_across_versioners() -> None:
+def test_versions_route_path_first_instance_wins_across_versioners() -> None:
     """The aggregated /versions endpoint is mounted once, by the first instance that asks for
     it. That instance fixes the path: a different versions_route_path passed by a later
     instance has no effect, though its versions are still aggregated in."""
@@ -181,9 +181,10 @@ def test_versions_route_path_first_non_none_value_wins_across_versioners() -> No
     assert {v["version"] for v in data["versions"]} == {"1.0", "2025-01-01"}
 
 
-def test_versions_route_path_none_keeps_the_default_even_behind_a_custom_first() -> None:
-    """Symmetric to the above: when the first instance leaves versions_route_path as None it
-    fixes the endpoint at /versions, and a later instance's custom path is still ignored."""
+def test_versions_route_path_default_wins_behind_a_custom_first() -> None:
+    """Symmetric to the above: when the first instance leaves versions_route_path at its
+    default it fixes the endpoint at /versions, and a later instance's custom path is still
+    ignored."""
     app = FastAPI()
 
     semver_router = APIRouter()
