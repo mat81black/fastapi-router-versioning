@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+## 1.1.0 (2026-09-09)
+
 ### Features
 
 * ✨ Show each version's migration guide on /versions and the dashboard. PR [#101](https://github.com/mat81black/fastapi-router-versioning/pull/101) by [@mat81black](https://github.com/mat81black).
