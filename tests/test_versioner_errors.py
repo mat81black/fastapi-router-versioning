@@ -105,9 +105,11 @@ def test_duplicate_latest_prefix_across_versioners_raises() -> None:
         ).versionize()
 
 
-def test_versions_route_path_without_leading_slash_raises() -> None:
-    """versions_route_path is a route path, not a name: it must start with '/'. A missing
-    leading slash is rejected at construction time, before any app mutation."""
+@pytest.mark.parametrize("bad_path", ["api-versions", "", None, 42])
+def test_versions_route_path_must_be_a_str_starting_with_slash(bad_path: object) -> None:
+    """versions_route_path is a route path, not a name: it must be a str starting with '/'.
+    A missing leading slash, an empty string, None or a non-str is rejected at construction
+    time, before any app mutation."""
     app = FastAPI()
     router = APIRouter()
 
@@ -121,7 +123,7 @@ def test_versions_route_path_without_leading_slash_raises() -> None:
             routers=router,
             version_format=VersionFormat.SEMVER,
             include_versions_route=True,
-            versions_route_path="api-versions",
+            versions_route_path=bad_path,  # type: ignore[arg-type]
         )
 
 
