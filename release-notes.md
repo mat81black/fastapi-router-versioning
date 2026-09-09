@@ -9,6 +9,10 @@
 * ✨ Add an HTML dashboard listing all active API versions. PR [#97](https://github.com/mat81black/fastapi-router-versioning/pull/97) by [@mat81black](https://github.com/mat81black).
 * ✨ Make the /versions discovery endpoint path configurable. PR [#95](https://github.com/mat81black/fastapi-router-versioning/pull/95) by [@mat81black](https://github.com/mat81black).
 
+### Refactors
+
+* ♻️ Default versions_route_path and versions_dashboard_path to their paths instead of None. PR [#104](https://github.com/mat81black/fastapi-router-versioning/pull/104) by [@mat81black](https://github.com/mat81black).
+
 ### Docs
 
 * 💡 Review the comments and docstrings across package, tests and examples. PR [#103](https://github.com/mat81black/fastapi-router-versioning/pull/103) by [@mat81black](https://github.com/mat81black).
