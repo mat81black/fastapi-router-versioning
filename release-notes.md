@@ -2,6 +2,10 @@
 
 ## Latest Changes
 
+### Internal
+
+* ⬆ Bump anyio from 4.14.1 to 4.14.2. PR [#106](https://github.com/mat81black/fastapi-router-versioning/pull/106) by [@dependabot[bot]](https://github.com/apps/dependabot).
+
 ## 1.1.0 (2026-09-09)
 
 ### Features
