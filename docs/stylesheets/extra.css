@@ -1,0 +1,31 @@
+/* On narrow screens, long identifiers in table cells (parameter names, types) may wrap
+   instead of widening the table past the page. */
+@media (max-width: 60em) {
+  .md-typeset table td code {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Home page hero: centered logo, colored title and a one-line description. */
+.hero-logo {
+  margin: 1.5rem 0 0.5rem;
+  text-align: center;
+}
+
+.hero-logo img {
+  height: auto;
+  width: 8rem;
+}
+
+.md-typeset h1.hero {
+  color: var(--md-primary-fg-color);
+  font-weight: 700;
+  margin: 0 0 0.6rem;
+  text-align: center;
+}
+
+.hero-tagline {
+  font-style: italic;
+  margin: 0 0 2rem;
+  text-align: center;
+}

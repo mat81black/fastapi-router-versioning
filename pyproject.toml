@@ -32,14 +32,15 @@ classifiers = [
 ]
 dependencies = [
     "fastapi >=0.120.0, !=0.137.0, !=0.137.1",
+    "annotated-doc >=0.0.2",
 ]
 
 [project.urls]
-Homepage = "https://github.com/mat81black/fastapi-router-versioning"
+Homepage = "https://mat81black.github.io/fastapi-router-versioning/"
 Repository = "https://github.com/mat81black/fastapi-router-versioning"
 Issues = "https://github.com/mat81black/fastapi-router-versioning/issues"
-Documentation = "https://github.com/mat81black/fastapi-router-versioning#readme"
-Changelog = "https://github.com/mat81black/fastapi-router-versioning/blob/main/release-notes.md"
+Documentation = "https://mat81black.github.io/fastapi-router-versioning/"
+Changelog = "https://mat81black.github.io/fastapi-router-versioning/release-notes/"
 
 [dependency-groups]
 dev = [
@@ -60,6 +61,20 @@ dev = [
     "zizmor>=1.0.0",
     "fastapi-validation-override>=0.2.0",
     "jinja2>=3.1.0",
+]
+
+docs = [
+    "zensical>=0.0.67",
+    "mkdocstrings[python]>=1.0.6",
+    "griffe-typingdoc>=0.3.1",
+    "ruff>=0.14.0",
+]
+
+# scripts/docs_screenshots.py: takes the screenshots of the docs in a real browser
+screenshots = [
+    "playwright>=1.49.0",
+    "pillow>=11.3.0",
+    "uvicorn>=0.49.0",
 ]
 
 [tool.hatch.version]
@@ -116,6 +131,13 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+# The docs pages show part of these files: the imports sit inside the shown part, after the
+# code that sets the example up (E402), in the compact style the pages use (I001).
+"docs_src/**" = ["E402", "I001"]
+
+[tool.ruff.format]
+# Formatted by hand: the pages show these files, and `ruff format` would undo their layout.
+exclude = ["docs_src/**"]
 
 [tool.ruff.lint.isort]
 lines-between-types = 1

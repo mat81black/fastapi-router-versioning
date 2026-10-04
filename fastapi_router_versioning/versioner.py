@@ -1,6 +1,7 @@
 from collections.abc import Callable
-from typing import Any
+from typing import Annotated, Any
 
+from annotated_doc import Doc
 from fastapi import APIRouter, FastAPI
 
 from ._builder import VersionRouterBuilder
@@ -22,97 +23,120 @@ class RouterVersioner:
     """Versions a FastAPI app in place: one router per active version, each mounted under its
     own prefix with its own OpenAPI schema and documentation pages.
 
-    The configuration is validated here, in __init__; nothing is mounted until versionize() is
-    called, and it may only be called once.
+    The configuration is validated here, in ``__init__``; nothing is mounted until ``versionize()``
+    is called, and it may only be called once.
     """
 
     def __init__(
         self,
-        app: FastAPI,
-        routers: list[APIRouter] | APIRouter,
-        version_format: VersionFormat = VersionFormat.SEMVER,
-        prefix_format: str | None = None,
-        semantic_version_format: str | None = None,
-        default_version: VersionT | None = None,
-        latest_prefix: str | None = None,
-        include_version_docs: bool = True,
-        include_version_openapi_route: bool = True,
-        include_versions_route: bool = False,
-        versions_route_path: str = "/versions",
-        include_versions_dashboard: bool = False,
-        versions_dashboard_path: str = "/dashboard",
-        versions_dashboard_hook: Callable[[list[dict[str, Any]], str], str] | None = None,
-        deprecation_headers: bool = False,
-        version_info: dict[VersionT, VersionInfo] | None = None,
-        sort_routes: bool = False,
-        callback: Callable[[APIRouter, VersionT, str], None] | None = None,
-        webhook_routers: list[APIRouter] | APIRouter | None = None,
-        openapi_hook: Callable[[dict[str, Any], VersionT], dict[str, Any]] | None = None,
-        swagger_js_url: str | None = None,
-        swagger_css_url: str | None = None,
-        swagger_favicon_url: str | None = None,
-        redoc_js_url: str | None = None,
-        redoc_favicon_url: str | None = None,
-        redoc_with_google_fonts: bool = True,
-    ):
-        """
-        Versionize your FastAPI application in-place, organizing routes based on their API version.
-
-        :param app: The main FastAPI application instance.
-        :param routers: A single APIRouter or a list of APIRouters containing the routes to version.
-        :param version_format: Enforces the versioning strategy (SEMVER or CALVER).
-            For CALVER, version strings must be lexicographically sortable in the intended
-            order (e.g. ISO dates "2025-01-01", zero-padded numbers "v01", "v02").
-            Strings like "v1", "v10", "v2" will NOT sort correctly and cause routes to
-            appear in the wrong versions.
-        :param prefix_format: Format used to build the route prefix.
-        :param semantic_version_format: Format used to build the version in Swagger/ReDoc.
-        :param default_version: Default version used if a route is not explicitly decorated.
-        :param latest_prefix: If specified, creates an alias prefix for the latest active version.
-        :param include_version_docs: If True, creates isolated Swagger/ReDoc pages for each version.
-        :param include_version_openapi_route: If True, creates an independent openapi.json route for each version.
-        :param include_versions_route: If True, adds a 'GET /versions' endpoint returning info on all active API versions.
-        :param versions_route_path: Path for that endpoint; defaults to '/versions'. Must be a str starting with '/'.
-            Has no effect unless include_versions_route is True. When several RouterVersioner instances share one app,
-            the endpoint is mounted once by the first of them to enable it, and that instance fixes its path; a
-            different versions_route_path on a later instance is ignored.
-        :param include_versions_dashboard: If True, adds an HTML page listing every active version with links to its
-            docs (and to its VersionInfo.guide, when version_info gives one). The built-in page shows app.title and
-            app.version. Same aggregated data as the /versions JSON route, but independent of it; kept out of the
-            OpenAPI schema.
-        :param versions_dashboard_path: Path for that page; defaults to '/dashboard'. Must be a str starting with '/'.
-            Has no effect unless include_versions_dashboard is True. Same first-instance-wins rule as versions_route_path.
-        :param versions_dashboard_hook: Optional renderer replacing the built-in dashboard page. Receives the aggregated
-            version models (the same dicts the /versions JSON returns) and the request root_path; must return the full HTML.
-            App metadata is not passed: a hook that wants it reads app.title / app.version off its own app reference.
-        :param deprecation_headers: If True, every response of a route in its deprecation window carries standards-based
-            headers, built once at versionize() time: RFC 9745 'Deprecation' and 'Link: rel="deprecation"', RFC 8594
-            'Sunset', RFC 5829 'Link: rel="successor-version"'. Off by default; the dates and guide URLs come from
-            version_info. With no version_info only the successor-version link is emitted (it needs no config).
-        :param version_info: Optional mapping of version -> VersionInfo carrying that version's calendar date and/or
-            upgrade-guide URL. VersionInfo.release_date and VersionInfo.guide feed the headers above (release_date at
-            deprecate_in -> 'Deprecation', at remove_in -> 'Sunset'; guide at deprecate_in -> 'Link: rel="deprecation"')
-            only when deprecation_headers is True, and with it on versionize() raises if a route's remove_in date precedes
-            its deprecate_in date. VersionInfo.guide is also listed per version on the '/versions' JSON endpoint and the
-            versions dashboard, regardless of deprecation_headers. A version absent from the map, or a VersionInfo field
-            left None, simply yields nothing for that part (no warning). Keys must match the version_format in use.
-        :param sort_routes: If True, sorts all routes alphabetically by path.
-        :param callback: Optional hook invoked every time a versioned APIRouter is created.
-        :param webhook_routers: A single APIRouter or a list of APIRouters containing webhook definitions
-            annotated with @api_version. When provided, each version's OpenAPI schema shows only the
-            webhooks active in that version (using the same introduce/remove lifecycle as regular routes).
-            When None, every version inherits app.webhooks unchanged.
-        :param openapi_hook: Optional hook applied to the generated OpenAPI schema for each version.
-            Receives the schema dict and the current version; must return the (modified) schema dict.
-            Use this to add custom extensions, logos, or version-specific metadata that would
-            otherwise be bypassed by the per-version schema generation.
-        :param swagger_js_url: Custom URL for the Swagger UI JS bundle. Defaults to FastAPI's CDN URL.
-        :param swagger_css_url: Custom URL for the Swagger UI CSS. Defaults to FastAPI's CDN URL.
-        :param swagger_favicon_url: Custom URL for the Swagger UI favicon. Defaults to FastAPI's favicon.
-        :param redoc_js_url: Custom URL for the ReDoc JS bundle. Defaults to FastAPI's CDN URL.
-        :param redoc_favicon_url: Custom URL for the ReDoc favicon. Defaults to FastAPI's favicon.
-        :param redoc_with_google_fonts: If False, ReDoc will not load Google Fonts. Defaults to True.
-        """
+        app: Annotated[FastAPI, Doc("The main FastAPI application instance.")],
+        routers: Annotated[
+            list[APIRouter] | APIRouter,
+            Doc("A single `APIRouter` or a list of them, containing the routes to version."),
+        ],
+        version_format: Annotated[
+            VersionFormat,
+            Doc(
+                'The versioning strategy, which fixes the type every version must have. For `CALVER`, version strings must sort lexicographically in the intended order (ISO dates like `"2025-01-01"`, zero-padded numbers like `"v01"`, `"v02"`); `"v1"`, `"v10"`, `"v2"` do not, and routes would appear in the wrong versions.'
+            ),
+        ] = VersionFormat.SEMVER,
+        prefix_format: Annotated[
+            str | None,
+            Doc(
+                "Template for each version's URL prefix; supports `{major}`, `{minor}` and `{version}`. Defaults to `/v{major}_{minor}` under SemVer and `/{version}` under CalVer."
+            ),
+        ] = None,
+        semantic_version_format: Annotated[
+            str | None,
+            Doc(
+                "Template for the version label in the Swagger/ReDoc titles; same placeholders. Defaults to `{major}.{minor}` under SemVer and `{version}` under CalVer."
+            ),
+        ] = None,
+        default_version: Annotated[
+            VersionT | None,
+            Doc(
+                'Version given to routes that are not decorated with `@api_version`. Defaults to `(1, 0)` under SemVer and `"1"` under CalVer.'
+            ),
+        ] = None,
+        latest_prefix: Annotated[
+            str | None,
+            Doc('If set (for example `"/latest"`), also mounts the newest active version under this prefix.'),
+        ] = None,
+        include_version_docs: Annotated[bool, Doc("Create a Swagger UI and a ReDoc page for each version.")] = True,
+        include_version_openapi_route: Annotated[
+            bool, Doc("Create a separate `openapi.json` route for each version.")
+        ] = True,
+        include_versions_route: Annotated[
+            bool, Doc("Add a `GET` endpoint returning information on every active version.")
+        ] = False,
+        versions_route_path: Annotated[
+            str,
+            Doc(
+                "Path of that endpoint; must start with `/`. Has no effect unless `include_versions_route` is `True`. When several `RouterVersioner` instances share one app, the endpoint is mounted once by the first of them to enable it, and that instance fixes its path; a different path on a later instance is ignored."
+            ),
+        ] = "/versions",
+        include_versions_dashboard: Annotated[
+            bool,
+            Doc(
+                "Add an HTML page listing every active version with links to its docs (and to its `VersionInfo.guide`, when `version_info` gives one). The built-in page shows `app.title` and `app.version`. Same data as the versions endpoint, but independent of it, and kept out of the OpenAPI schema."
+            ),
+        ] = False,
+        versions_dashboard_path: Annotated[
+            str,
+            Doc(
+                "Path of that page; must start with `/`. Has no effect unless `include_versions_dashboard` is `True`. Same first-instance-wins rule as `versions_route_path`."
+            ),
+        ] = "/dashboard",
+        versions_dashboard_hook: Annotated[
+            Callable[[list[dict[str, Any]], str], str] | None,
+            Doc(
+                "Renderer replacing the built-in dashboard page. Receives the aggregated version models (the same dicts the versions endpoint returns) and the request `root_path`, and must return the full HTML. App metadata is not passed: a hook that wants it reads `app.title` / `app.version` from its own app reference."
+            ),
+        ] = None,
+        deprecation_headers: Annotated[
+            bool,
+            Doc(
+                'If `True`, every response of a route in its deprecation window carries these headers, built once at `versionize()` time: `Deprecation` and `Link: rel="deprecation"` (RFC 9745), `Sunset` (RFC 8594), `Link: rel="successor-version"` (RFC 5829). Dates and guide URLs come from `version_info`; without it only the successor-version link is emitted, since it needs no configuration.'
+            ),
+        ] = False,
+        version_info: Annotated[
+            dict[VersionT, VersionInfo] | None,
+            Doc(
+                "Mapping of version to its `VersionInfo` (release date and/or upgrade-guide URL); keys must match `version_format`. The fields feed the deprecation headers only when `deprecation_headers` is `True`, and with it on `versionize()` raises if a route's `remove_in` date precedes its `deprecate_in` date. `VersionInfo.guide` is also listed per version on the versions endpoint and the dashboard regardless. A version absent from the map, or a field left `None`, yields nothing for that part, with no warning."
+            ),
+        ] = None,
+        sort_routes: Annotated[bool, Doc("Sort all routes alphabetically by path.")] = False,
+        callback: Annotated[
+            Callable[[APIRouter, VersionT, str], None] | None,
+            Doc(
+                "Called with `(router, version, prefix)` for every versioned router, including the `latest_prefix` alias, right before it is included in the app."
+            ),
+        ] = None,
+        webhook_routers: Annotated[
+            list[APIRouter] | APIRouter | None,
+            Doc(
+                "A single `APIRouter` or a list of them, holding webhook definitions annotated with `@api_version`. Each version's OpenAPI schema then shows only the webhooks active in it, using the same introduce/remove lifecycle as routes. When `None`, every version inherits `app.webhooks` unchanged."
+            ),
+        ] = None,
+        openapi_hook: Annotated[
+            Callable[[dict[str, Any], VersionT], dict[str, Any]] | None,
+            Doc(
+                "Applied to the OpenAPI schema generated for each version. Receives the schema dict and the version, and must return the (possibly modified) schema. Use it to add extensions, logos or version-specific metadata that the per-version schema generation would otherwise bypass."
+            ),
+        ] = None,
+        swagger_js_url: Annotated[
+            str | None, Doc("URL of the Swagger UI JS bundle. Defaults to FastAPI's CDN URL.")
+        ] = None,
+        swagger_css_url: Annotated[str | None, Doc("URL of the Swagger UI CSS. Defaults to FastAPI's CDN URL.")] = None,
+        swagger_favicon_url: Annotated[
+            str | None, Doc("URL of the Swagger UI favicon. Defaults to FastAPI's favicon.")
+        ] = None,
+        redoc_js_url: Annotated[str | None, Doc("URL of the ReDoc JS bundle. Defaults to FastAPI's CDN URL.")] = None,
+        redoc_favicon_url: Annotated[
+            str | None, Doc("URL of the ReDoc favicon. Defaults to FastAPI's favicon.")
+        ] = None,
+        redoc_with_google_fonts: Annotated[bool, Doc("If `False`, ReDoc does not load Google Fonts.")] = True,
+    ) -> None:
         self._app = app
         self._routers = [routers] if isinstance(routers, APIRouter) else routers
         self._webhook_routers: list[APIRouter] | None = (
@@ -162,18 +186,19 @@ class RouterVersioner:
     def versionize(self) -> list[VersionT]:
         """
         Reads the configured routers, groups their routes by version, and mounts one
-        versioned router per active version on the app.
+        versioned router per active version on the app. Returns the versions that were
+        actually mounted.
 
-        May only be called once per instance. If it raises, the app failed to load: don't
-        catch the exception and retry, since some versions may already be mounted and this
-        package makes no attempt to undo that.
+        May only be called once per instance: a second call raises ``RuntimeError``. If it
+        raises, the app failed to load: don't catch the exception and retry, since some
+        versions may already be mounted and this package makes no attempt to undo that.
 
-        :return: The list of versions that were actually mounted.
-        :raises ValueError: if a route's ``@api_version`` does not match the configured
-            ``version_format``, or if ``version_info`` dates a route's ``remove_in`` before its
-            ``deprecate_in`` while ``deprecation_headers`` is on.
-        :raises RuntimeError: if called a second time on this instance, or if a prefix is
-            already taken, by this instance or by another RouterVersioner on the same app.
+        Raises ``ValueError`` if a route's ``@api_version`` does not match the configured
+        ``version_format``, or if ``version_info`` dates a route's ``remove_in`` before its
+        ``deprecate_in`` while ``deprecation_headers`` is on. Raises ``RuntimeError`` if a
+        prefix is already taken, by this instance or by another RouterVersioner on the same
+        app. Raises ``TypeError`` if a router holds a route that is neither an HTTP nor a
+        WebSocket route.
         """
         if self._versionized:
             raise RuntimeError(

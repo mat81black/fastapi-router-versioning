@@ -35,6 +35,7 @@ jobs:
           filters: |
             src:
               - .github/workflows/test.yml
+              - docs_src/**
               - examples/**
               - fastapi_router_versioning/**
               - scripts/**
