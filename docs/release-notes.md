@@ -2,6 +2,10 @@
 
 ## Latest Changes
 
+### Docs
+
+* 📝 Add documentation site . PR [#111](https://github.com/mat81black/fastapi-router-versioning/pull/111) by [@mat81black](https://github.com/mat81black).
+
 ### Internal
 
 * ⬆ Bump the python-packages group with 9 updates. PR [#110](https://github.com/mat81black/fastapi-router-versioning/pull/110) by [@dependabot[bot]](https://github.com/apps/dependabot).
