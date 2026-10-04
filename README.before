@@ -36,11 +36,7 @@ Documentation: https://mat81black.github.io/fastapi-router-versioning/
 ## Requirements
 
 - Python ≥ 3.10
-- FastAPI ≥ 0.120.0, except `0.137.0` and `0.137.1`
-
-> **Why two FastAPI versions are excluded**
->
-> `0.137.0` and `0.137.1` shipped a routing internals rewrite before `iter_route_contexts()` landed in `0.137.2`, which this package relies on. Supporting that narrow gap would have meant a third compatibility code path instead of the two the package actually needs.
+- FastAPI ≥ 0.120.0 (`0.137.0` and `0.137.1` are excluded: they shipped a routing internals rewrite before `iter_route_contexts()` landed in `0.137.2`, which this package relies on; supporting that narrow gap would have meant a third compatibility code path instead of the two the package actually needs)
 
 ---
 
@@ -88,6 +84,8 @@ RouterVersioner(
     app=app, routers=router,
     version_format=VersionFormat.SEMVER
 ).versionize()
+# Mounts: GET /v1_0/items   GET /v2_0/items
+# Docs at: /v1_0/docs, /v2_0/docs
 ```
 
 CalVer, the route lifecycle, the parameter reference and the advanced options are in the [documentation](https://mat81black.github.io/fastapi-router-versioning/).

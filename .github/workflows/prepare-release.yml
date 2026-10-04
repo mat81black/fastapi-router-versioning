@@ -28,7 +28,7 @@ jobs:
       pull-requests: write
     env:
       PREPARE_RELEASE_VERSION_FILE: fastapi_router_versioning/__init__.py
-      PREPARE_RELEASE_RELEASE_NOTES_FILE: release-notes.md
+      PREPARE_RELEASE_RELEASE_NOTES_FILE: docs/release-notes.md
     steps:
       - name: Dump GitHub context
         env:

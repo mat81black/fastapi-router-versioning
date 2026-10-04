@@ -1,0 +1,58 @@
+name: Deploy Docs
+
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers] -- only a successful push to main of this repository is deployed; pull request builds never are
+    workflows:
+      - Build Docs
+    types:
+      - completed
+
+permissions: {}
+
+jobs:
+  deploy-docs:
+    if: >-
+      github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.head_branch == 'main'
+      && github.event.workflow_run.head_repository.full_name == github.repository
+      && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read # download the artifact of the Build Docs run
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    timeout-minutes: 10
+    steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+      - name: Clean site
+        run: |
+          rm -rf ./site
+          mkdir ./site
+      # Build Docs is skipped when nothing that goes into the site changed: it uploads no artifact,
+      # the download below finds nothing, and the steps that need ./site/ are skipped
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1 #sync-pin:download-artifact-2
+        with:
+          path: ./site/
+          pattern: docs-site
+          merge-multiple: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0 #sync-pin:upload-pages-artifact
+        # hashFiles returns an empty string if there are no files
+        if: hashFiles('./site/*')
+        with:
+          path: site
+      - name: Deploy to GitHub Pages
+        # hashFiles returns an empty string if there are no files
+        if: hashFiles('./site/*')
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1 #sync-pin:deploy-pages

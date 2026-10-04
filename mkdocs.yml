@@ -1,0 +1,129 @@
+site_name: FastAPI Router Versioning
+site_description: Router-based API versioning for FastAPI, with per-version docs and a declarative route lifecycle.
+site_url: https://mat81black.github.io/fastapi-router-versioning/
+repo_url: https://github.com/mat81black/fastapi-router-versioning
+repo_name: mat81black/fastapi-router-versioning
+copyright: Copyright &copy; 2026 Matteo Nieddu &middot; <a href="https://github.com/mat81black/fastapi-router-versioning/blob/main/LICENSE">MIT License</a>
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  variant: classic
+  logo: assets/images/logo-header.svg
+  favicon: assets/images/favicon.svg
+  custom_dir: overrides
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: pink
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: pink
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+  features:
+    - content.code.annotate
+    - content.code.copy
+    - content.footnote.tooltips
+    - content.tabs.link
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.suggest
+    - toc.follow
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/mat81black/fastapi-router-versioning
+      name: Source code on GitHub
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/fastapi-router-versioning/
+      name: fastapi-router-versioning on PyPI
+    - icon: fontawesome/solid/bug
+      link: https://github.com/mat81black/fastapi-router-versioning/issues
+      name: Report an issue
+
+extra_css:
+  - stylesheets/extra.css
+
+nav:
+  - Home: index.md
+  - Guide:
+      - Quick start: quickstart.md
+      - Route lifecycle: lifecycle.md
+      - How it works: how-it-works.md
+      - Advanced options:
+          - advanced/index.md
+          - Deprecation headers: advanced/deprecation-headers.md
+          - Latest alias: advanced/latest-alias.md
+          - Version discovery: advanced/version-discovery.md
+          - Custom URL format: advanced/custom-url-format.md
+          - OpenAPI schema hook: advanced/openapi-hook.md
+          - Validation error status code: advanced/validation-error-status-code.md
+          - OpenAPI callbacks and webhooks: advanced/callbacks-and-webhooks.md
+          - Multiple routers: advanced/multiple-routers.md
+          - Self-hosted assets: advanced/self-hosted-assets.md
+          - Reverse proxy and sub-apps: advanced/reverse-proxy-and-sub-apps.md
+          - Callback hook: advanced/callback-hook.md
+  - Reference: reference.md
+  - Examples: examples.md
+  - Release notes: release-notes.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            extensions:
+              - griffe_typingdoc
+            docstring_section_style: spacy
+            show_root_heading: true
+            show_root_full_path: false
+            show_if_no_docstring: true
+            members_order: source
+            separate_signature: true
+            unwrap_annotated: true
+            merge_init_into_class: true
+            signature_crossrefs: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
