@@ -36,11 +36,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/mat81black/fastapi-router-versioning"
+Homepage = "https://mat81black.github.io/fastapi-router-versioning/"
 Repository = "https://github.com/mat81black/fastapi-router-versioning"
 Issues = "https://github.com/mat81black/fastapi-router-versioning/issues"
 Documentation = "https://mat81black.github.io/fastapi-router-versioning/"
-Changelog = "https://github.com/mat81black/fastapi-router-versioning/blob/main/docs/release-notes.md"
+Changelog = "https://mat81black.github.io/fastapi-router-versioning/release-notes/"
 
 [dependency-groups]
 dev = [
