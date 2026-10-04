@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+## 1.2.0 (2026-10-04)
+
 ### Docs
 
 * 📝 Add documentation site . PR [#111](https://github.com/mat81black/fastapi-router-versioning/pull/111) by [@mat81black](https://github.com/mat81black).
