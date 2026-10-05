@@ -2,6 +2,10 @@
 
 ## Latest Changes
 
+### Internal
+
+* ⬆ Bump the python-packages group with 2 updates. PR [#113](https://github.com/mat81black/fastapi-router-versioning/pull/113) by [@dependabot[bot]](https://github.com/apps/dependabot).
+
 ## 1.2.0 (2026-10-04)
 
 ### Docs
