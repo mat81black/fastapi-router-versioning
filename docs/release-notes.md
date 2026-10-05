@@ -4,6 +4,7 @@
 
 ### Internal
 
+* ⬆ Bump annotated-doc from 0.0.4 to 0.0.5. PR [#114](https://github.com/mat81black/fastapi-router-versioning/pull/114) by [@dependabot[bot]](https://github.com/apps/dependabot).
 * ⬆ Bump the python-packages group with 2 updates. PR [#113](https://github.com/mat81black/fastapi-router-versioning/pull/113) by [@dependabot[bot]](https://github.com/apps/dependabot).
 
 ## 1.2.0 (2026-10-04)
