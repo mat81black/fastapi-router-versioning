@@ -2,6 +2,10 @@
 
 ## Latest Changes
 
+### Docs
+
+* 📝 Add v1.0, v2.0 and v3.0 Swagger screenshots to the route lifecycle page. PR [#115](https://github.com/mat81black/fastapi-router-versioning/pull/115) by [@mat81black](https://github.com/mat81black).
+
 ### Internal
 
 * ⬆ Bump annotated-doc from 0.0.4 to 0.0.5. PR [#114](https://github.com/mat81black/fastapi-router-versioning/pull/114) by [@dependabot[bot]](https://github.com/apps/dependabot).
