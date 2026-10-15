@@ -46,6 +46,7 @@ class Shot:
 SHOTS = [
     Shot("swagger-v1", "examples/semver_app.py", "/v1_0/docs", "swagger"),
     Shot("swagger-v2", "examples/semver_app.py", "/v2_0/docs", "swagger"),
+    Shot("swagger-v3", "examples/semver_app.py", "/v3_0/docs", "swagger"),
     Shot("redoc-v2", "examples/semver_app.py", "/v2_0/redoc", "redoc"),
     Shot("versions-dashboard", "examples/versions_dashboard_app.py", "/dashboard", "dashboard"),
     Shot("quickstart-semver-v1", "docs_src/quickstart/semver.py", "/v1_0/docs", "swagger"),

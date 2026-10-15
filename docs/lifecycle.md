@@ -49,11 +49,26 @@ for a working example.
 ## In the generated docs
 
 In each version's Swagger UI and ReDoc, a route in its deprecation window is struck through, a route
-removed from a version is absent, and a route introduced later appears only from that version. This is
-v2.0 of [`semver_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/semver_app.py):
-`/lifecycle` and `/legacy-notice` are deprecated from v2.0, and `/newcomer` is introduced in it.
+removed from a version is absent, and a route introduced later appears only from that version. These are
+v1.0, v2.0 and v3.0 of [`semver_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/semver_app.py):
 
-![Swagger UI of version 2.0, with lifecycle and legacy-notice struck through as deprecated and newcomer added](assets/screenshots/swagger-v2.jpg){ loading=lazy }
+=== "v1.0"
+
+    `/lifecycle` and `/legacy-notice` are active, and `/newcomer` and `/future` don't exist yet.
+
+    ![Swagger UI of version 1.0, with persistent, lifecycle, legacy-notice, settings and items](assets/screenshots/swagger-v1.jpg){ loading=lazy }
+
+=== "v2.0"
+
+    `/lifecycle` and `/legacy-notice` are deprecated from v2.0, and `/newcomer` is introduced in it.
+
+    ![Swagger UI of version 2.0, with lifecycle and legacy-notice struck through as deprecated and newcomer added](assets/screenshots/swagger-v2.jpg){ loading=lazy }
+
+=== "v3.0"
+
+    `/lifecycle` is removed. `/legacy-notice` has no `remove_in`, so it stays, still deprecated, and `/future` is introduced.
+
+    ![Swagger UI of version 3.0, without lifecycle, with legacy-notice still struck through and future added](assets/screenshots/swagger-v3.jpg){ loading=lazy }
 
 ## Deprecation headers
 
