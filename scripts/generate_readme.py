@@ -22,7 +22,7 @@ REPO_URL = "https://github.com/mat81black/fastapi-router-versioning"
 ASSETS_URL = "https://raw.githubusercontent.com/mat81black/fastapi-router-versioning/main/docs/assets/images"
 
 HEADER = f"""<p align="center">
-  <img src="{ASSETS_URL}/logo.svg" alt="FastAPI Router Versioning logo" width="128" height="128">
+  <img src="{ASSETS_URL}/logo.svg" alt="FastAPI Router Versioning logo" width="128">
 </p>
 
 <h1 align="center">

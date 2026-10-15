@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mat81black/fastapi-router-versioning/main/docs/assets/images/logo.svg" alt="FastAPI Router Versioning logo" width="128" height="128">
+  <img src="https://raw.githubusercontent.com/mat81black/fastapi-router-versioning/main/docs/assets/images/logo.svg" alt="FastAPI Router Versioning logo" width="128">
 </p>
 
 <h1 align="center">
