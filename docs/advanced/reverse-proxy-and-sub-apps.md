@@ -14,4 +14,4 @@ The ASGI `root_path` FastAPI sets when an app runs behind a proxy or is mounted 
 A mounted sub-application is a separate `FastAPI()` instance, so a `RouterVersioner` attached to
 it is entirely independent from one attached to the parent, or to another sub-application, with
 no prefix coordination needed.
-See [`examples/mounted_subapps_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/mounted_subapps_app.py).
+See [`examples/mounted_subapps_app.py`](https://github.com/matblack81/fastapi-router-versioning/blob/main/examples/mounted_subapps_app.py).

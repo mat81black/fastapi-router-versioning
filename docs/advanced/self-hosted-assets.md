@@ -11,5 +11,5 @@ copies for air-gapped or restricted-network deployments:
 --8<-- "docs_src/advanced/self_hosted_assets.py:snippet"
 ```
 
-[`examples/download_static_assets.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/download_static_assets.py) downloads the required files in one step;
-[`examples/self_hosted_docs_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/self_hosted_docs_app.py) wires them into a full app.
+[`examples/download_static_assets.py`](https://github.com/matblack81/fastapi-router-versioning/blob/main/examples/download_static_assets.py) downloads the required files in one step;
+[`examples/self_hosted_docs_app.py`](https://github.com/matblack81/fastapi-router-versioning/blob/main/examples/self_hosted_docs_app.py) wires them into a full app.

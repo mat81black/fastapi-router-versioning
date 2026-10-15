@@ -19,7 +19,7 @@ Running multiple API versions side by side usually means duplicating routers, ha
 
 ## What you get
 
-Every version gets its own Swagger UI, ReDoc and `openapi.json`, listing only the routes active in that version. These screenshots come from [`semver_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/semver_app.py), where `/lifecycle` and `/legacy-notice` are deprecated in v2.0, `/newcomer` is added in v2.0, and a dedicated route takes over `POST /settings`.
+Every version gets its own Swagger UI, ReDoc and `openapi.json`, listing only the routes active in that version. These screenshots come from [`semver_app.py`](https://github.com/matblack81/fastapi-router-versioning/blob/main/examples/semver_app.py), where `/lifecycle` and `/legacy-notice` are deprecated in v2.0, `/newcomer` is added in v2.0, and a dedicated route takes over `POST /settings`.
 
 === "Swagger UI, v1.0"
 

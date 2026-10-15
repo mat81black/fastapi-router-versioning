@@ -33,4 +33,4 @@ config). `versionize()` raises `ValueError` if a route's `remove_in` date preced
 This adds nothing to `@api_version`: the lifecycle stays on the route, the dates stay on the
 versioner. `Deprecation` and `Sunset` are only set if the response doesn't already carry them:
 a route that sets its own keeps it. The `Link` field is sent alongside any the route already
-emits (RFC 8288: multiple `Link` fields combine). See [`deprecation_headers_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/deprecation_headers_app.py).
+emits (RFC 8288: multiple `Link` fields combine). See [`deprecation_headers_app.py`](https://github.com/matblack81/fastapi-router-versioning/blob/main/examples/deprecation_headers_app.py).
