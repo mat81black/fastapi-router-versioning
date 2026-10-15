@@ -4,6 +4,7 @@
 
 ### Docs
 
+* 🖼️ Adjust logo dimensions in README and script by removing height attribute. PR [#118](https://github.com/matblack81/fastapi-router-versioning/pull/118) by [@matblack81](https://github.com/matblack81).
 * 📝 Add a guide to adopting versioning in an existing app. PR [#116](https://github.com/mat81black/fastapi-router-versioning/pull/116) by [@mat81black](https://github.com/mat81black).
 * 📝 Add v1.0, v2.0 and v3.0 Swagger screenshots to the route lifecycle page. PR [#115](https://github.com/mat81black/fastapi-router-versioning/pull/115) by [@mat81black](https://github.com/mat81black).
 
