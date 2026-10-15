@@ -176,3 +176,34 @@ def test_route_callbacks_are_carried_into_the_version() -> None:
     client = TestClient(load("advanced/callbacks").app)
 
     assert schema(client, "/v1_0")["paths"]["/v1_0/items"]["post"]["callbacks"]
+
+
+def test_migration_adopt_keeps_the_unversioned_url_and_mounts_v1() -> None:
+    client = TestClient(load("migration/adopt").app)
+
+    assert client.get("/items").json() == {"items": ["a", "b"]}
+    assert client.get("/v1_0/items").json() == {"items": ["a", "b"]}
+    assert client.get("/v1_0/docs").status_code == 200
+    assert client.get("/v2_0/items").status_code == 404
+
+
+def test_migration_unversioned_url_does_not_follow_the_new_version() -> None:
+    client = TestClient(load("migration/change_endpoint").app)
+
+    assert client.get("/items").json() == {"items": ["a", "b"]}
+    assert client.get("/v1_0/items").json() == {"items": ["a", "b"]}
+    assert client.get("/v2_0/items").json() == {"items": ["a", "b", "c"]}
+    # the app's own schema keeps the last operation declared for /items, while requests get the first
+    root_schema = schema(client, "")
+    assert list(root_schema["paths"]) == ["/items", "/v1_0/items", "/v2_0/items"]
+    assert root_schema["paths"]["/items"]["get"]["summary"] == "Get Items V2"
+    assert list(schema(client, "/v1_0")["paths"]) == ["/v1_0/items"]
+    assert list(schema(client, "/v2_0")["paths"]) == ["/v2_0/items"]
+
+
+def test_migration_retiring_the_unversioned_url_leaves_latest() -> None:
+    client = TestClient(load("migration/retire_unversioned").app)
+
+    assert client.get("/items").status_code == 404
+    assert client.get("/v1_0/items").json() == {"items": ["a", "b"]}
+    assert client.get("/latest/items").json() == {"items": ["a", "b", "c"]}

@@ -52,6 +52,7 @@ SHOTS = [
     Shot("quickstart-semver-v1", "docs_src/quickstart/semver.py", "/v1_0/docs", "swagger"),
     Shot("quickstart-semver-v2", "docs_src/quickstart/semver.py", "/v2_0/docs", "swagger"),
     Shot("quickstart-calver", "docs_src/quickstart/calver.py", "/2025-01-01/docs", "swagger"),
+    Shot("migration-root", "docs_src/migration/change_endpoint.py", "/docs", "swagger"),
     Shot("url-format-v1", "docs_src/advanced/custom_url_format.py", "/v1/docs", "swagger"),
     Shot("url-format-latest", "docs_src/advanced/custom_url_format.py", "/latest/docs", "swagger"),
     Shot("latest-alias", "docs_src/advanced/latest_alias.py", "/latest/docs", "swagger"),

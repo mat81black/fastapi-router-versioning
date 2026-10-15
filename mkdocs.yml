@@ -67,6 +67,7 @@ nav:
   - Home: index.md
   - Guide:
       - Quick start: quickstart.md
+      - Adding it to an existing app: migrating.md
       - Route lifecycle: lifecycle.md
       - How it works: how-it-works.md
       - Advanced options:
