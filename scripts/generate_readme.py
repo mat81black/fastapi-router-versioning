@@ -17,9 +17,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 README = ROOT / "README.md"
-SITE_URL = "https://mat81black.github.io/fastapi-router-versioning/"
-REPO_URL = "https://github.com/mat81black/fastapi-router-versioning"
-ASSETS_URL = "https://raw.githubusercontent.com/mat81black/fastapi-router-versioning/main/docs/assets/images"
+SITE_URL = "https://fastapi-router-versioning.matblack81.com/"
+REPO_URL = "https://github.com/matblack81/fastapi-router-versioning"
+ASSETS_URL = "https://raw.githubusercontent.com/matblack81/fastapi-router-versioning/main/docs/assets/images"
 
 HEADER = f"""<p align="center">
   <img src="{ASSETS_URL}/logo.svg" alt="FastAPI Router Versioning logo" width="128" height="128">
@@ -31,7 +31,7 @@ HEADER = f"""<p align="center">
 
 <p align="center">
   <a href="{REPO_URL}/actions"><img src="{REPO_URL}/workflows/Test/badge.svg" alt="Build Status"></a>
-  <a href="https://codecov.io/github/mat81black/fastapi-router-versioning"><img src="https://codecov.io/github/mat81black/fastapi-router-versioning/graph/badge.svg?token=4WQ63Q7ESY" alt="codecov"></a>
+  <a href="https://codecov.io/github/matblack81/fastapi-router-versioning"><img src="https://codecov.io/github/matblack81/fastapi-router-versioning/graph/badge.svg?token=4WQ63Q7ESY" alt="codecov"></a>
   <a href="https://pypi.org/project/fastapi-router-versioning/"><img src="https://img.shields.io/pypi/v/fastapi-router-versioning?color=%2334D058&label=pypi%20package" alt="pypi package"></a>
   <a href="https://pypi.org/project/fastapi-router-versioning/"><img src="https://img.shields.io/pypi/pyversions/fastapi-router-versioning.svg?color=%2334D058" alt="Supported Python versions"></a>
   <a href="{REPO_URL}/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>

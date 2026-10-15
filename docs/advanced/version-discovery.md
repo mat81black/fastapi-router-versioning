@@ -46,4 +46,4 @@ if you want them).
 
 ![The built-in versions dashboard: two versions, each with links to Swagger, ReDoc and OpenAPI, and a Guide link on the second](../assets/screenshots/versions-dashboard.jpg)
 
-The built-in dashboard, from [`versions_dashboard_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/versions_dashboard_app.py).
+The built-in dashboard, from [`versions_dashboard_app.py`](https://github.com/matblack81/fastapi-router-versioning/blob/main/examples/versions_dashboard_app.py).

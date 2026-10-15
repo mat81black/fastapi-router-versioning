@@ -1,9 +1,9 @@
 site_name: FastAPI Router Versioning
 site_description: Router-based API versioning for FastAPI, with per-version docs and a declarative route lifecycle.
-site_url: https://mat81black.github.io/fastapi-router-versioning/
-repo_url: https://github.com/mat81black/fastapi-router-versioning
-repo_name: mat81black/fastapi-router-versioning
-copyright: Copyright &copy; 2026 Matteo Nieddu &middot; <a href="https://github.com/mat81black/fastapi-router-versioning/blob/main/LICENSE">MIT License</a>
+site_url: https://fastapi-router-versioning.matblack81.com/
+repo_url: https://github.com/matblack81/fastapi-router-versioning
+repo_name: matblack81/fastapi-router-versioning
+copyright: Copyright &copy; 2026 Matteo Nieddu &middot; <a href="https://github.com/matblack81/fastapi-router-versioning/blob/main/LICENSE">MIT License</a>
 edit_uri: edit/main/docs/
 
 theme:
@@ -51,13 +51,13 @@ theme:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/mat81black/fastapi-router-versioning
+      link: https://github.com/matblack81/fastapi-router-versioning
       name: Source code on GitHub
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/fastapi-router-versioning/
       name: fastapi-router-versioning on PyPI
     - icon: fontawesome/solid/bug
-      link: https://github.com/mat81black/fastapi-router-versioning/issues
+      link: https://github.com/matblack81/fastapi-router-versioning/issues
       name: Report an issue
 
 extra_css:

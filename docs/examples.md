@@ -128,4 +128,4 @@ Custom validation error status code via `fastapi-validation-override` and `opena
 
 ## Support files
 
-[`download_static_assets.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/download_static_assets.py) downloads the Swagger UI and ReDoc files used by `self_hosted_docs_app.py`, and the [`dashboard_assets/`](https://github.com/mat81black/fastapi-router-versioning/tree/main/examples/dashboard_assets) folder holds the template and stylesheet of `versions_dashboard_hook_app.py`.
+[`download_static_assets.py`](https://github.com/matblack81/fastapi-router-versioning/blob/main/examples/download_static_assets.py) downloads the Swagger UI and ReDoc files used by `self_hosted_docs_app.py`, and the [`dashboard_assets/`](https://github.com/matblack81/fastapi-router-versioning/tree/main/examples/dashboard_assets) folder holds the template and stylesheet of `versions_dashboard_hook_app.py`.

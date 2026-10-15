@@ -19,7 +19,7 @@ each definition:
 --8<-- "docs_src/advanced/webhooks.py:snippet"
 ```
 
-In [`webhook_versioning_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/webhook_versioning_app.py), which follows this pattern, v1.0 lists two webhooks and v2.0 only `order-created`, with its v2 definition (the example's second webhook is `payment-received` rather than `payment-failed`):
+In [`webhook_versioning_app.py`](https://github.com/matblack81/fastapi-router-versioning/blob/main/examples/webhook_versioning_app.py), which follows this pattern, v1.0 lists two webhooks and v2.0 only `order-created`, with its v2 definition (the example's second webhook is `payment-received` rather than `payment-failed`):
 
 === "v1.0"
 

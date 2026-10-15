@@ -19,4 +19,4 @@ uv add fastapi-validation-override
 --8<-- "docs_src/advanced/validation_error_status_code.py:snippet"
 ```
 
-See [`examples/validation_override_integration_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/validation_override_integration_app.py).
+See [`examples/validation_override_integration_app.py`](https://github.com/matblack81/fastapi-router-versioning/blob/main/examples/validation_override_integration_app.py).

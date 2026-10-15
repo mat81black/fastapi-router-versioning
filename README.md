@@ -1,22 +1,22 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mat81black/fastapi-router-versioning/main/docs/assets/images/logo.svg" alt="FastAPI Router Versioning logo" width="128" height="128">
+  <img src="https://raw.githubusercontent.com/matblack81/fastapi-router-versioning/main/docs/assets/images/logo.svg" alt="FastAPI Router Versioning logo" width="128" height="128">
 </p>
 
 <h1 align="center">
-  <img src="https://raw.githubusercontent.com/mat81black/fastapi-router-versioning/main/docs/assets/images/wordmark.png" alt="FastAPI Router Versioning" width="480">
+  <img src="https://raw.githubusercontent.com/matblack81/fastapi-router-versioning/main/docs/assets/images/wordmark.png" alt="FastAPI Router Versioning" width="480">
 </h1>
 
 <p align="center">
-  <a href="https://github.com/mat81black/fastapi-router-versioning/actions"><img src="https://github.com/mat81black/fastapi-router-versioning/workflows/Test/badge.svg" alt="Build Status"></a>
-  <a href="https://codecov.io/github/mat81black/fastapi-router-versioning"><img src="https://codecov.io/github/mat81black/fastapi-router-versioning/graph/badge.svg?token=4WQ63Q7ESY" alt="codecov"></a>
+  <a href="https://github.com/matblack81/fastapi-router-versioning/actions"><img src="https://github.com/matblack81/fastapi-router-versioning/workflows/Test/badge.svg" alt="Build Status"></a>
+  <a href="https://codecov.io/github/matblack81/fastapi-router-versioning"><img src="https://codecov.io/github/matblack81/fastapi-router-versioning/graph/badge.svg?token=4WQ63Q7ESY" alt="codecov"></a>
   <a href="https://pypi.org/project/fastapi-router-versioning/"><img src="https://img.shields.io/pypi/v/fastapi-router-versioning?color=%2334D058&label=pypi%20package" alt="pypi package"></a>
   <a href="https://pypi.org/project/fastapi-router-versioning/"><img src="https://img.shields.io/pypi/pyversions/fastapi-router-versioning.svg?color=%2334D058" alt="Supported Python versions"></a>
-  <a href="https://github.com/mat81black/fastapi-router-versioning/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
+  <a href="https://github.com/matblack81/fastapi-router-versioning/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
 </p>
 
 Running multiple API versions side by side usually means duplicating routers, hand-rolling prefixes, or branching on request paths. `RouterVersioner` does it declaratively instead: annotate each route with the version it belongs to, and it generates the URL prefixes, the per-version OpenAPI schema, and the docs, without moving anything else in your app.
 
-Documentation: https://mat81black.github.io/fastapi-router-versioning/
+Documentation: https://fastapi-router-versioning.matblack81.com/
 
 ---
 
@@ -90,16 +90,16 @@ RouterVersioner(
 ).versionize()
 ```
 
-CalVer, the route lifecycle, the parameter reference and the advanced options are in the [documentation](https://mat81black.github.io/fastapi-router-versioning/).
+CalVer, the route lifecycle, the parameter reference and the advanced options are in the [documentation](https://fastapi-router-versioning.matblack81.com/).
 
 ---
 
 ## Release Notes
 
-[RELEASE_NOTES](https://github.com/mat81black/fastapi-router-versioning/blob/main/docs/release-notes.md)
+[RELEASE_NOTES](https://github.com/matblack81/fastapi-router-versioning/blob/main/docs/release-notes.md)
 
 ---
 
 ## License
 
-[MIT](https://github.com/mat81black/fastapi-router-versioning/blob/main/LICENSE)
+[MIT](https://github.com/matblack81/fastapi-router-versioning/blob/main/LICENSE)

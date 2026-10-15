@@ -43,14 +43,14 @@ ever turns deprecation *on* for versions at or after its boundary; it never turn
 
 A route with `methods=["GET", "POST"]` can have just one of its methods taken over by a
 dedicated route in a later version; the other method keeps being served by the original
-route. See [`semver_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/semver_app.py)
+route. See [`semver_app.py`](https://github.com/matblack81/fastapi-router-versioning/blob/main/examples/semver_app.py)
 for a working example.
 
 ## In the generated docs
 
 In each version's Swagger UI and ReDoc, a route in its deprecation window is struck through, a route
 removed from a version is absent, and a route introduced later appears only from that version. These are
-v1.0, v2.0 and v3.0 of [`semver_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/semver_app.py):
+v1.0, v2.0 and v3.0 of [`semver_app.py`](https://github.com/matblack81/fastapi-router-versioning/blob/main/examples/semver_app.py):
 
 === "v1.0"
 
