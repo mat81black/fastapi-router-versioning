@@ -9,7 +9,7 @@ permissions: {}
 
 jobs:
   bump-pre-commit-hooks:
-    if: github.repository_owner == 'mat81black'
+    if: github.repository_owner == 'matblack81'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

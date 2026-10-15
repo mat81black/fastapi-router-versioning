@@ -22,7 +22,7 @@ Every version mentioned by any route, as `version`, `deprecate_in` or `remove_in
 
 Because the key is the path *and* the method, one method of a route can be replaced while the others carry on, and a version that only removes routes still exists, with no routes at all if nothing else is active.
 
-For [`semver_app.py`](https://github.com/mat81black/fastapi-router-versioning/blob/main/examples/semver_app.py) this gives:
+For [`semver_app.py`](https://github.com/matblack81/fastapi-router-versioning/blob/main/examples/semver_app.py) this gives:
 
 | Version | Routes served |
 |---|---|
