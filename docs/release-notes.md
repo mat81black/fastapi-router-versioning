@@ -2,6 +2,8 @@
 
 ## Latest Changes
 
+## 1.2.1 (2026-10-15)
+
 ### Docs
 
 * 🖼️ Adjust logo dimensions in README and script by removing height attribute. PR [#118](https://github.com/matblack81/fastapi-router-versioning/pull/118) by [@matblack81](https://github.com/matblack81).
