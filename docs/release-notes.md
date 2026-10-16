@@ -7,121 +7,121 @@
 ### Docs
 
 * 🖼️ Adjust logo dimensions in README and script by removing height attribute. PR [#118](https://github.com/matblack81/fastapi-router-versioning/pull/118) by [@matblack81](https://github.com/matblack81).
-* 📝 Add a guide to adopting versioning in an existing app. PR [#116](https://github.com/mat81black/fastapi-router-versioning/pull/116) by [@mat81black](https://github.com/mat81black).
-* 📝 Add v1.0, v2.0 and v3.0 Swagger screenshots to the route lifecycle page. PR [#115](https://github.com/mat81black/fastapi-router-versioning/pull/115) by [@mat81black](https://github.com/mat81black).
+* 📝 Add a guide to adopting versioning in an existing app. PR [#116](https://github.com/matblack81/fastapi-router-versioning/pull/116) by [@matblack81](https://github.com/matblack81).
+* 📝 Add v1.0, v2.0 and v3.0 Swagger screenshots to the route lifecycle page. PR [#115](https://github.com/matblack81/fastapi-router-versioning/pull/115) by [@matblack81](https://github.com/matblack81).
 
 ### Internal
 
 * 📝 Point documentation links to the new domain. PR [#117](https://github.com/matblack81/fastapi-router-versioning/pull/117) by [@matblack81](https://github.com/matblack81).
-* ⬆ Bump annotated-doc from 0.0.4 to 0.0.5. PR [#114](https://github.com/mat81black/fastapi-router-versioning/pull/114) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ Bump the python-packages group with 2 updates. PR [#113](https://github.com/mat81black/fastapi-router-versioning/pull/113) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump annotated-doc from 0.0.4 to 0.0.5. PR [#114](https://github.com/matblack81/fastapi-router-versioning/pull/114) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump the python-packages group with 2 updates. PR [#113](https://github.com/matblack81/fastapi-router-versioning/pull/113) by [@dependabot[bot]](https://github.com/apps/dependabot).
 
 ## 1.2.0 (2026-10-04)
 
 ### Docs
 
-* 📝 Add documentation site . PR [#111](https://github.com/mat81black/fastapi-router-versioning/pull/111) by [@mat81black](https://github.com/mat81black).
+* 📝 Add documentation site . PR [#111](https://github.com/matblack81/fastapi-router-versioning/pull/111) by [@matblack81](https://github.com/matblack81).
 
 ### Internal
 
-* ⬆ Bump the python-packages group with 9 updates. PR [#110](https://github.com/mat81black/fastapi-router-versioning/pull/110) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ Bump the github-actions group with 3 updates. PR [#109](https://github.com/mat81black/fastapi-router-versioning/pull/109) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ Bump pre-commit hooks. PR [#108](https://github.com/mat81black/fastapi-router-versioning/pull/108) by [@mat81black](https://github.com/mat81black).
+* ⬆ Bump the python-packages group with 9 updates. PR [#110](https://github.com/matblack81/fastapi-router-versioning/pull/110) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump the github-actions group with 3 updates. PR [#109](https://github.com/matblack81/fastapi-router-versioning/pull/109) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump pre-commit hooks. PR [#108](https://github.com/matblack81/fastapi-router-versioning/pull/108) by [@matblack81](https://github.com/matblack81).
 
 ## 1.1.1 (2026-09-22)
 
 ### Internal
 
-* ⬆ Bump anyio from 4.14.1 to 4.14.2. PR [#106](https://github.com/mat81black/fastapi-router-versioning/pull/106) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump anyio from 4.14.1 to 4.14.2. PR [#106](https://github.com/matblack81/fastapi-router-versioning/pull/106) by [@dependabot[bot]](https://github.com/apps/dependabot).
 
 ## 1.1.0 (2026-09-09)
 
 ### Features
 
-* ✨ Show each version's migration guide on /versions and the dashboard. PR [#101](https://github.com/mat81black/fastapi-router-versioning/pull/101) by [@mat81black](https://github.com/mat81black).
-* ✨ Signal route deprecation to clients with RFC 9745 Deprecation, RFC 8594 Sunset and Link headers. PR [#98](https://github.com/mat81black/fastapi-router-versioning/pull/98) by [@mat81black](https://github.com/mat81black).
-* ✨ Add an HTML dashboard listing all active API versions. PR [#97](https://github.com/mat81black/fastapi-router-versioning/pull/97) by [@mat81black](https://github.com/mat81black).
-* ✨ Make the /versions discovery endpoint path configurable. PR [#95](https://github.com/mat81black/fastapi-router-versioning/pull/95) by [@mat81black](https://github.com/mat81black).
+* ✨ Show each version's migration guide on /versions and the dashboard. PR [#101](https://github.com/matblack81/fastapi-router-versioning/pull/101) by [@matblack81](https://github.com/matblack81).
+* ✨ Signal route deprecation to clients with RFC 9745 Deprecation, RFC 8594 Sunset and Link headers. PR [#98](https://github.com/matblack81/fastapi-router-versioning/pull/98) by [@matblack81](https://github.com/matblack81).
+* ✨ Add an HTML dashboard listing all active API versions. PR [#97](https://github.com/matblack81/fastapi-router-versioning/pull/97) by [@matblack81](https://github.com/matblack81).
+* ✨ Make the /versions discovery endpoint path configurable. PR [#95](https://github.com/matblack81/fastapi-router-versioning/pull/95) by [@matblack81](https://github.com/matblack81).
 
 ### Refactors
 
-* ♻️ Default versions_route_path and versions_dashboard_path to their paths instead of None. PR [#104](https://github.com/mat81black/fastapi-router-versioning/pull/104) by [@mat81black](https://github.com/mat81black).
+* ♻️ Default versions_route_path and versions_dashboard_path to their paths instead of None. PR [#104](https://github.com/matblack81/fastapi-router-versioning/pull/104) by [@matblack81](https://github.com/matblack81).
 
 ### Docs
 
-* 💡 Review the comments and docstrings across package, tests and examples. PR [#103](https://github.com/mat81black/fastapi-router-versioning/pull/103) by [@mat81black](https://github.com/mat81black).
-* 📝 Complete the README reference and make its wording plainer. PR [#100](https://github.com/mat81black/fastapi-router-versioning/pull/100) by [@mat81black](https://github.com/mat81black).
-* 📝 Document the deprecation headers in the README. PR [#99](https://github.com/mat81black/fastapi-router-versioning/pull/99) by [@mat81black](https://github.com/mat81black).
+* 💡 Review the comments and docstrings across package, tests and examples. PR [#103](https://github.com/matblack81/fastapi-router-versioning/pull/103) by [@matblack81](https://github.com/matblack81).
+* 📝 Complete the README reference and make its wording plainer. PR [#100](https://github.com/matblack81/fastapi-router-versioning/pull/100) by [@matblack81](https://github.com/matblack81).
+* 📝 Document the deprecation headers in the README. PR [#99](https://github.com/matblack81/fastapi-router-versioning/pull/99) by [@matblack81](https://github.com/matblack81).
 
 ### Internal
 
-* ♻️ Split versioner.py into single-responsibility private modules. PR [#102](https://github.com/mat81black/fastapi-router-versioning/pull/102) by [@mat81black](https://github.com/mat81black).
-* 🐛 Fix test-redistribute collection error from anyio's deprecated BlockingPortal alias. PR [#96](https://github.com/mat81black/fastapi-router-versioning/pull/96) by [@mat81black](https://github.com/mat81black).
-* ⬆ Bump the python-packages group with 4 updates. PR [#94](https://github.com/mat81black/fastapi-router-versioning/pull/94) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ Bump re-actors/alls-green from 1.2.2 to 1.3.0 in the github-actions group. PR [#93](https://github.com/mat81black/fastapi-router-versioning/pull/93) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ Bump pre-commit hooks. PR [#92](https://github.com/mat81black/fastapi-router-versioning/pull/92) by [@mat81black](https://github.com/mat81black).
-* ⬆ Bump fastapi from 0.140.0 to 0.141.1. PR [#91](https://github.com/mat81black/fastapi-router-versioning/pull/91) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ Bump the python-packages group with 11 updates. PR [#90](https://github.com/mat81black/fastapi-router-versioning/pull/90) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ Bump the github-actions group with 2 updates. PR [#89](https://github.com/mat81black/fastapi-router-versioning/pull/89) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* 👷 Replace actions/labeler with Latest Changes App auto-labeling. PR [#87](https://github.com/mat81black/fastapi-router-versioning/pull/87) by [@mat81black](https://github.com/mat81black).
+* ♻️ Split versioner.py into single-responsibility private modules. PR [#102](https://github.com/matblack81/fastapi-router-versioning/pull/102) by [@matblack81](https://github.com/matblack81).
+* 🐛 Fix test-redistribute collection error from anyio's deprecated BlockingPortal alias. PR [#96](https://github.com/matblack81/fastapi-router-versioning/pull/96) by [@matblack81](https://github.com/matblack81).
+* ⬆ Bump the python-packages group with 4 updates. PR [#94](https://github.com/matblack81/fastapi-router-versioning/pull/94) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump re-actors/alls-green from 1.2.2 to 1.3.0 in the github-actions group. PR [#93](https://github.com/matblack81/fastapi-router-versioning/pull/93) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump pre-commit hooks. PR [#92](https://github.com/matblack81/fastapi-router-versioning/pull/92) by [@matblack81](https://github.com/matblack81).
+* ⬆ Bump fastapi from 0.140.0 to 0.141.1. PR [#91](https://github.com/matblack81/fastapi-router-versioning/pull/91) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump the python-packages group with 11 updates. PR [#90](https://github.com/matblack81/fastapi-router-versioning/pull/90) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump the github-actions group with 2 updates. PR [#89](https://github.com/matblack81/fastapi-router-versioning/pull/89) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* 👷 Replace actions/labeler with Latest Changes App auto-labeling. PR [#87](https://github.com/matblack81/fastapi-router-versioning/pull/87) by [@matblack81](https://github.com/matblack81).
 
 ## 1.0.3 (2026-08-13)
 
 ### Fixes
 
-* 🐛 Fix tag metadata missing from versioned schemas when tags use an Enum. PR [#81](https://github.com/mat81black/fastapi-router-versioning/pull/81) by [@mat81black](https://github.com/mat81black).
-* 🐛 Distinguish an unset webhook_routers from one provided but empty. PR [#80](https://github.com/mat81black/fastapi-router-versioning/pull/80) by [@mat81black](https://github.com/mat81black).
-* 🐛 Read route attributes from the merged RouteContext instead of the original route. PR [#79](https://github.com/mat81black/fastapi-router-versioning/pull/79) by [@mat81black](https://github.com/mat81black).
-* 🐛 Preserve custom route_class when mounting versioned routes. PR [#78](https://github.com/mat81black/fastapi-router-versioning/pull/78) by [@mat81black](https://github.com/mat81black).
+* 🐛 Fix tag metadata missing from versioned schemas when tags use an Enum. PR [#81](https://github.com/matblack81/fastapi-router-versioning/pull/81) by [@matblack81](https://github.com/matblack81).
+* 🐛 Distinguish an unset webhook_routers from one provided but empty. PR [#80](https://github.com/matblack81/fastapi-router-versioning/pull/80) by [@matblack81](https://github.com/matblack81).
+* 🐛 Read route attributes from the merged RouteContext instead of the original route. PR [#79](https://github.com/matblack81/fastapi-router-versioning/pull/79) by [@matblack81](https://github.com/matblack81).
+* 🐛 Preserve custom route_class when mounting versioned routes. PR [#78](https://github.com/matblack81/fastapi-router-versioning/pull/78) by [@matblack81](https://github.com/matblack81).
 
 ### Refactors
 
-* ♻️ Move prefix and /versions bookkeeping off app.state into a private registry. PR [#84](https://github.com/mat81black/fastapi-router-versioning/pull/84) by [@mat81black](https://github.com/mat81black).
+* ♻️ Move prefix and /versions bookkeeping off app.state into a private registry. PR [#84](https://github.com/matblack81/fastapi-router-versioning/pull/84) by [@matblack81](https://github.com/matblack81).
 
 ### Internal
 
-* ♻️ Reorganize versioner tests into docs, lifecycle, webhooks, and errors files. PR [#85](https://github.com/mat81black/fastapi-router-versioning/pull/85) by [@mat81black](https://github.com/mat81black).
-* ✅ Cover versionize() on a router with no routes. PR [#83](https://github.com/mat81black/fastapi-router-versioning/pull/83) by [@mat81black](https://github.com/mat81black).
-* ✅ Cover default_version type validation on construction. PR [#82](https://github.com/mat81black/fastapi-router-versioning/pull/82) by [@mat81black](https://github.com/mat81black).
+* ♻️ Reorganize versioner tests into docs, lifecycle, webhooks, and errors files. PR [#85](https://github.com/matblack81/fastapi-router-versioning/pull/85) by [@matblack81](https://github.com/matblack81).
+* ✅ Cover versionize() on a router with no routes. PR [#83](https://github.com/matblack81/fastapi-router-versioning/pull/83) by [@matblack81](https://github.com/matblack81).
+* ✅ Cover default_version type validation on construction. PR [#82](https://github.com/matblack81/fastapi-router-versioning/pull/82) by [@matblack81](https://github.com/matblack81).
 
 ## 1.0.2 (2026-08-12)
 
 ### Internal
 
-* ✅ Cover examples/ with an import-and-schema smoke test and align their run instructions. PR [#76](https://github.com/mat81black/fastapi-router-versioning/pull/76) by [@mat81black](https://github.com/mat81black).
-* ♻️ Standardize examples with a run instruction docstring, drop the main blocks. PR [#75](https://github.com/mat81black/fastapi-router-versioning/pull/75) by [@mat81black](https://github.com/mat81black).
-* 👷 Sync CI, pre-commit, and release scripts workflows with the latest template. PR [#74](https://github.com/mat81black/fastapi-router-versioning/pull/74) by [@mat81black](https://github.com/mat81black).
-* 🐛 Fix release date defaulting to the date the script was imported. PR [#73](https://github.com/mat81black/fastapi-router-versioning/pull/73) by [@mat81black](https://github.com/mat81black).
-* 🐛 Fix partial release state when release notes write fails. PR [#72](https://github.com/mat81black/fastapi-router-versioning/pull/72) by [@mat81black](https://github.com/mat81black).
-* 🐛 Reject invalid bump types and cover prepare_release's untested error paths. PR [#71](https://github.com/mat81black/fastapi-router-versioning/pull/71) by [@mat81black](https://github.com/mat81black).
-* 🐛 Fix partial release state when release notes update fails. PR [#70](https://github.com/mat81black/fastapi-router-versioning/pull/70) by [@mat81black](https://github.com/mat81black).
-* ⬆️ Bump tiangolo/latest-changes to 0.7.1. PR [#69](https://github.com/mat81black/fastapi-router-versioning/pull/69) by [@mat81black](https://github.com/mat81black).
-* ✅ Prove PR test changes actually catch a regression before merging. PR [#68](https://github.com/mat81black/fastapi-router-versioning/pull/68) by [@mat81black](https://github.com/mat81black).
-* ⬆ Bump fastapi from 0.139.2 to 0.140.0. PR [#67](https://github.com/mat81black/fastapi-router-versioning/pull/67) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ Bump the python-packages group with 5 updates. PR [#66](https://github.com/mat81black/fastapi-router-versioning/pull/66) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ Bump zizmorcore/zizmor-action from 0.6.0 to 0.6.1 in the github-actions group. PR [#65](https://github.com/mat81black/fastapi-router-versioning/pull/65) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ✅ Cover examples/ with an import-and-schema smoke test and align their run instructions. PR [#76](https://github.com/matblack81/fastapi-router-versioning/pull/76) by [@matblack81](https://github.com/matblack81).
+* ♻️ Standardize examples with a run instruction docstring, drop the main blocks. PR [#75](https://github.com/matblack81/fastapi-router-versioning/pull/75) by [@matblack81](https://github.com/matblack81).
+* 👷 Sync CI, pre-commit, and release scripts workflows with the latest template. PR [#74](https://github.com/matblack81/fastapi-router-versioning/pull/74) by [@matblack81](https://github.com/matblack81).
+* 🐛 Fix release date defaulting to the date the script was imported. PR [#73](https://github.com/matblack81/fastapi-router-versioning/pull/73) by [@matblack81](https://github.com/matblack81).
+* 🐛 Fix partial release state when release notes write fails. PR [#72](https://github.com/matblack81/fastapi-router-versioning/pull/72) by [@matblack81](https://github.com/matblack81).
+* 🐛 Reject invalid bump types and cover prepare_release's untested error paths. PR [#71](https://github.com/matblack81/fastapi-router-versioning/pull/71) by [@matblack81](https://github.com/matblack81).
+* 🐛 Fix partial release state when release notes update fails. PR [#70](https://github.com/matblack81/fastapi-router-versioning/pull/70) by [@matblack81](https://github.com/matblack81).
+* ⬆️ Bump tiangolo/latest-changes to 0.7.1. PR [#69](https://github.com/matblack81/fastapi-router-versioning/pull/69) by [@matblack81](https://github.com/matblack81).
+* ✅ Prove PR test changes actually catch a regression before merging. PR [#68](https://github.com/matblack81/fastapi-router-versioning/pull/68) by [@matblack81](https://github.com/matblack81).
+* ⬆ Bump fastapi from 0.139.2 to 0.140.0. PR [#67](https://github.com/matblack81/fastapi-router-versioning/pull/67) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump the python-packages group with 5 updates. PR [#66](https://github.com/matblack81/fastapi-router-versioning/pull/66) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump zizmorcore/zizmor-action from 0.6.0 to 0.6.1 in the github-actions group. PR [#65](https://github.com/matblack81/fastapi-router-versioning/pull/65) by [@dependabot[bot]](https://github.com/apps/dependabot).
 
 ## 1.0.1 (2026-08-01)
 
 ### Fixes
 
-* 🐛 Fix missing OpenAPI validation in docs URL checks when versioning is enabled. PR [#61](https://github.com/mat81black/fastapi-router-versioning/pull/61) by [@mat81black](https://github.com/mat81black).
-* 🐛 Fix versionize() failures blocking any retry on the same app. PR [#58](https://github.com/mat81black/fastapi-router-versioning/pull/58) by [@mat81black](https://github.com/mat81black).
-* 🐛 Fix OpenAPI schema caching to handle /latest alias independently. PR [#57](https://github.com/mat81black/fastapi-router-versioning/pull/57) by [@mat81black](https://github.com/mat81black).
-* 🐛 Fix include_version_openapi_route not disabling docs UIs. PR [#55](https://github.com/mat81black/fastapi-router-versioning/pull/55) by [@mat81black](https://github.com/mat81black).
-* 🐛 Fix duplicate route registration for multi-method endpoints. PR [#54](https://github.com/mat81black/fastapi-router-versioning/pull/54) by [@mat81black](https://github.com/mat81black).
-* 🐛 Fix deprecation never becoming observable when deprecate_in is the only lifecycle change. PR [#53](https://github.com/mat81black/fastapi-router-versioning/pull/53) by [@mat81black](https://github.com/mat81black).
-* 🐛 Fix route removal deleting its replacement instead of the removed route. PR [#52](https://github.com/mat81black/fastapi-router-versioning/pull/52) by [@mat81black](https://github.com/mat81black).
+* 🐛 Fix missing OpenAPI validation in docs URL checks when versioning is enabled. PR [#61](https://github.com/matblack81/fastapi-router-versioning/pull/61) by [@matblack81](https://github.com/matblack81).
+* 🐛 Fix versionize() failures blocking any retry on the same app. PR [#58](https://github.com/matblack81/fastapi-router-versioning/pull/58) by [@matblack81](https://github.com/matblack81).
+* 🐛 Fix OpenAPI schema caching to handle /latest alias independently. PR [#57](https://github.com/matblack81/fastapi-router-versioning/pull/57) by [@matblack81](https://github.com/matblack81).
+* 🐛 Fix include_version_openapi_route not disabling docs UIs. PR [#55](https://github.com/matblack81/fastapi-router-versioning/pull/55) by [@matblack81](https://github.com/matblack81).
+* 🐛 Fix duplicate route registration for multi-method endpoints. PR [#54](https://github.com/matblack81/fastapi-router-versioning/pull/54) by [@matblack81](https://github.com/matblack81).
+* 🐛 Fix deprecation never becoming observable when deprecate_in is the only lifecycle change. PR [#53](https://github.com/matblack81/fastapi-router-versioning/pull/53) by [@matblack81](https://github.com/matblack81).
+* 🐛 Fix route removal deleting its replacement instead of the removed route. PR [#52](https://github.com/matblack81/fastapi-router-versioning/pull/52) by [@matblack81](https://github.com/matblack81).
 
 ### Refactors
 
-* ♻️ Refactor `_add_versions_route` to support multiple version model providers. PR [#60](https://github.com/mat81black/fastapi-router-versioning/pull/60) by [@mat81black](https://github.com/mat81black).
-* 🐛 Simplify `versionize()` error handling and remove rollback logic. PR [#59](https://github.com/mat81black/fastapi-router-versioning/pull/59) by [@mat81black](https://github.com/mat81black).
+* ♻️ Refactor `_add_versions_route` to support multiple version model providers. PR [#60](https://github.com/matblack81/fastapi-router-versioning/pull/60) by [@matblack81](https://github.com/matblack81).
+* 🐛 Simplify `versionize()` error handling and remove rollback logic. PR [#59](https://github.com/matblack81/fastapi-router-versioning/pull/59) by [@matblack81](https://github.com/matblack81).
 
 ### Docs
 
-* 📝 Update README with examples for permanent deprecation, multi-method takeover, and shared `/versions` behavior. PR [#63](https://github.com/mat81black/fastapi-router-versioning/pull/63) by [@mat81black](https://github.com/mat81black).
-* ♻️ Add permanent deprecation and multi-method takeover examples to semver_app. PR [#62](https://github.com/mat81black/fastapi-router-versioning/pull/62) by [@mat81black](https://github.com/mat81black).
+* 📝 Update README with examples for permanent deprecation, multi-method takeover, and shared `/versions` behavior. PR [#63](https://github.com/matblack81/fastapi-router-versioning/pull/63) by [@matblack81](https://github.com/matblack81).
+* ♻️ Add permanent deprecation and multi-method takeover examples to semver_app. PR [#62](https://github.com/matblack81/fastapi-router-versioning/pull/62) by [@matblack81](https://github.com/matblack81).
 
 ## 1.0.0 (2026-07-28)
 
@@ -131,85 +131,85 @@
 
 ### Breaking Changes
 
-* ♻️ Remove built-in validation error override in favor of fastapi-validation-override. PR [#46](https://github.com/mat81black/fastapi-router-versioning/pull/46) by [@mat81black](https://github.com/mat81black).
+* ♻️ Remove built-in validation error override in favor of fastapi-validation-override. PR [#46](https://github.com/matblack81/fastapi-router-versioning/pull/46) by [@matblack81](https://github.com/matblack81).
 
 ### Internal
 
-* ⬆ Bump fastapi from 0.139.0 to 0.139.2. PR [#49](https://github.com/mat81black/fastapi-router-versioning/pull/49) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ Bump the python-packages group with 7 updates. PR [#48](https://github.com/mat81black/fastapi-router-versioning/pull/48) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ Bump the github-actions group with 5 updates. PR [#47](https://github.com/mat81black/fastapi-router-versioning/pull/47) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump fastapi from 0.139.0 to 0.139.2. PR [#49](https://github.com/matblack81/fastapi-router-versioning/pull/49) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump the python-packages group with 7 updates. PR [#48](https://github.com/matblack81/fastapi-router-versioning/pull/48) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump the github-actions group with 5 updates. PR [#47](https://github.com/matblack81/fastapi-router-versioning/pull/47) by [@dependabot[bot]](https://github.com/apps/dependabot).
 
 ## 0.2.7 (2026-07-18)
 
 ### Internal
 
-* ⬆ Bump pre-commit hooks. PR [#44](https://github.com/mat81black/fastapi-router-versioning/pull/44) by [@mat81black](https://github.com/mat81black).
-* ⬆ Bump the python-packages group across 1 directory with 5 updates. PR [#42](https://github.com/mat81black/fastapi-router-versioning/pull/42) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ Bump the github-actions group across 1 directory with 2 updates. PR [#41](https://github.com/mat81black/fastapi-router-versioning/pull/41) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* 👷 Replace Dependabot pre-commit ecosystem with custom bump workflow. PR [#43](https://github.com/mat81black/fastapi-router-versioning/pull/43) by [@mat81black](https://github.com/mat81black).
+* ⬆ Bump pre-commit hooks. PR [#44](https://github.com/matblack81/fastapi-router-versioning/pull/44) by [@matblack81](https://github.com/matblack81).
+* ⬆ Bump the python-packages group across 1 directory with 5 updates. PR [#42](https://github.com/matblack81/fastapi-router-versioning/pull/42) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ Bump the github-actions group across 1 directory with 2 updates. PR [#41](https://github.com/matblack81/fastapi-router-versioning/pull/41) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* 👷 Replace Dependabot pre-commit ecosystem with custom bump workflow. PR [#43](https://github.com/matblack81/fastapi-router-versioning/pull/43) by [@matblack81](https://github.com/matblack81).
 
 ## 0.2.6 (2026-07-11)
 
 ### Refactors
 
-* ♻️ Use fastapi-native imports instead of importing from starlette directly. PR [#38](https://github.com/mat81black/fastapi-router-versioning/pull/38) by [@mat81black](https://github.com/mat81black).
+* ♻️ Use fastapi-native imports instead of importing from starlette directly. PR [#38](https://github.com/matblack81/fastapi-router-versioning/pull/38) by [@matblack81](https://github.com/matblack81).
 
 ## 0.2.5 (2026-07-10)
 
 ### Fixes
 
-* 🐛 Fix misleading self-collision error in RouterVersioner prefix claiming. PR [#36](https://github.com/mat81black/fastapi-router-versioning/pull/36) by [@mat81black](https://github.com/mat81black).
+* 🐛 Fix misleading self-collision error in RouterVersioner prefix claiming. PR [#36](https://github.com/matblack81/fastapi-router-versioning/pull/36) by [@matblack81](https://github.com/matblack81).
 
 ## 0.2.4 (2026-07-09)
 
 ### Internal
 
-* 🔧 Integrate Codecov for coverage tracking and update README. PR [#34](https://github.com/mat81black/fastapi-router-versioning/pull/34) by [@mat81black](https://github.com/mat81black).
+* 🔧 Integrate Codecov for coverage tracking and update README. PR [#34](https://github.com/matblack81/fastapi-router-versioning/pull/34) by [@matblack81](https://github.com/matblack81).
 
 ## 0.2.3 (2026-07-09)
 
 ### Docs
-* 📝 Rewrite README with PyPI-safe links and corrected project metadata. PR [#27](https://github.com/mat81black/fastapi-router-versioning/pull/27) by [@mat81black](https://github.com/mat81black).
+* 📝 Rewrite README with PyPI-safe links and corrected project metadata. PR [#27](https://github.com/matblack81/fastapi-router-versioning/pull/27) by [@matblack81](https://github.com/matblack81).
 
 ### Internal
 
-* ⬆ bump the python-packages group with 2 updates. PR [#30](https://github.com/mat81black/fastapi-router-versioning/pull/30) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ bump https://github.com/crate-ci/typos from v1.48.0 to 5.0.7 in the pre-commit group. PR [#29](https://github.com/mat81black/fastapi-router-versioning/pull/29) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ bump dorny/paths-filter from 4.0.1 to 4.0.2 in the github-actions group. PR [#31](https://github.com/mat81black/fastapi-router-versioning/pull/31) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* ⬆ bump fastapi from 0.138.1 to 0.139.0. PR [#32](https://github.com/mat81black/fastapi-router-versioning/pull/32) by [@dependabot[bot]](https://github.com/apps/dependabot).
-* 🔧 Overhaul CI/CD workflows for labeling, releases, and coverage tracking. PR [#28](https://github.com/mat81black/fastapi-router-versioning/pull/28) by [@mat81black](https://github.com/mat81black).
+* ⬆ bump the python-packages group with 2 updates. PR [#30](https://github.com/matblack81/fastapi-router-versioning/pull/30) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ bump https://github.com/crate-ci/typos from v1.48.0 to 5.0.7 in the pre-commit group. PR [#29](https://github.com/matblack81/fastapi-router-versioning/pull/29) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ bump dorny/paths-filter from 4.0.1 to 4.0.2 in the github-actions group. PR [#31](https://github.com/matblack81/fastapi-router-versioning/pull/31) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* ⬆ bump fastapi from 0.138.1 to 0.139.0. PR [#32](https://github.com/matblack81/fastapi-router-versioning/pull/32) by [@dependabot[bot]](https://github.com/apps/dependabot).
+* 🔧 Overhaul CI/CD workflows for labeling, releases, and coverage tracking. PR [#28](https://github.com/matblack81/fastapi-router-versioning/pull/28) by [@matblack81](https://github.com/matblack81).
 
 ## 0.2.2 (2026-07-01)
 
 ### Fixes
 
-* 🐛 Fix root OpenAPI schema not reflecting validation_error_code. PR [#21](https://github.com/mat81black/fastapi-router-versioning/pull/21) by [@mat81black](https://github.com/mat81black).
-* 🐛 Fix silent conflicts from misconfigured RouterVersioner instances sharing an app. PR [#20](https://github.com/mat81black/fastapi-router-versioning/pull/20) by [@mat81black](https://github.com/mat81black).
+* 🐛 Fix root OpenAPI schema not reflecting validation_error_code. PR [#21](https://github.com/matblack81/fastapi-router-versioning/pull/21) by [@matblack81](https://github.com/matblack81).
+* 🐛 Fix silent conflicts from misconfigured RouterVersioner instances sharing an app. PR [#20](https://github.com/matblack81/fastapi-router-versioning/pull/20) by [@matblack81](https://github.com/matblack81).
 
 ### Internal
 
-* 👷 Add a regression test for `RouterVersioner` under a real `app.mount()` sub-application, and `examples/mounted_subapps_app.py` demonstrating the same scenario. PR [#22](https://github.com/mat81black/fastapi-router-versioning/pull/22) by [@mat81black](https://github.com/mat81black).
+* 👷 Add a regression test for `RouterVersioner` under a real `app.mount()` sub-application, and `examples/mounted_subapps_app.py` demonstrating the same scenario. PR [#22](https://github.com/matblack81/fastapi-router-versioning/pull/22) by [@matblack81](https://github.com/matblack81).
 
 ### Refactors
 
-* ♻️ Reorder RouterVersioner methods to match their call graph. PR [#23](https://github.com/mat81black/fastapi-router-versioning/pull/23) by [@mat81black](https://github.com/mat81black).
+* ♻️ Reorder RouterVersioner methods to match their call graph. PR [#23](https://github.com/matblack81/fastapi-router-versioning/pull/23) by [@matblack81](https://github.com/matblack81).
 
 ## 0.2.1 (2026-06-26)
 
 ### Fixes
 
-* 🐛 Fix `api_version` signature to enforce `deprecate_in` and `remove_in` as keyword-only arguments, aligning the implementation with the documented signature. PR [#18](https://github.com/mat81black/fastapi-router-versioning/pull/18) by [@mat81black](https://github.com/mat81black).
+* 🐛 Fix `api_version` signature to enforce `deprecate_in` and `remove_in` as keyword-only arguments, aligning the implementation with the documented signature. PR [#18](https://github.com/matblack81/fastapi-router-versioning/pull/18) by [@matblack81](https://github.com/matblack81).
 
 ## 0.2.0 (2026-06-26)
 
 ### Features
 
-* ✨ Add `validation_error_code` parameter to `RouterVersioner` to override the HTTP status code returned for request validation errors (default: `422`). The OpenAPI schema is updated automatically to reflect the custom code. PR [#16](https://github.com/mat81black/fastapi-router-versioning/pull/16) by [@mat81black](https://github.com/mat81black).
-* ✨ Add `handle_validation_exceptions` parameter to `RouterVersioner`: when `False`, only the OpenAPI schema is updated, leaving the exception handler to the user. PR [#16](https://github.com/mat81black/fastapi-router-versioning/pull/16) by [@mat81black](https://github.com/mat81black).
+* ✨ Add `validation_error_code` parameter to `RouterVersioner` to override the HTTP status code returned for request validation errors (default: `422`). The OpenAPI schema is updated automatically to reflect the custom code. PR [#16](https://github.com/matblack81/fastapi-router-versioning/pull/16) by [@matblack81](https://github.com/matblack81).
+* ✨ Add `handle_validation_exceptions` parameter to `RouterVersioner`: when `False`, only the OpenAPI schema is updated, leaving the exception handler to the user. PR [#16](https://github.com/matblack81/fastapi-router-versioning/pull/16) by [@matblack81](https://github.com/matblack81).
 
 ### Fixes
 
-* 🐛 Fix Python 3.14 classifier not actually added to `pyproject.toml` in 0.1.2. PR [#15](https://github.com/mat81black/fastapi-router-versioning/pull/15) by [@mat81black](https://github.com/mat81black).
+* 🐛 Fix Python 3.14 classifier not actually added to `pyproject.toml` in 0.1.2. PR [#15](https://github.com/matblack81/fastapi-router-versioning/pull/15) by [@matblack81](https://github.com/matblack81).
 
 ## 0.1.2 (2026-06-25)
 
@@ -219,24 +219,24 @@
 
 ### Docs
 
-* 📝 Update README and `pyproject.toml` to clarify package description and improve documentation consistency. PR [#12](https://github.com/mat81black/fastapi-router-versioning/pull/12) by [@mat81black](https://github.com/mat81black).
+* 📝 Update README and `pyproject.toml` to clarify package description and improve documentation consistency. PR [#12](https://github.com/matblack81/fastapi-router-versioning/pull/12) by [@matblack81](https://github.com/matblack81).
 
 ## 0.1.1 (2026-06-24)
 
 ### Features
 
-* ✨ Add per-version OpenAPI schema caching: schemas are generated once and cached, reducing overhead on repeated requests. PR [#5](https://github.com/mat81black/fastapi-router-versioning/pull/5) by [@mat81black](https://github.com/mat81black).
-* ✨ Track which routes belong to each version to invalidate the cache automatically when the route set changes. PR [#5](https://github.com/mat81black/fastapi-router-versioning/pull/5) by [@mat81black](https://github.com/mat81black).
+* ✨ Add per-version OpenAPI schema caching: schemas are generated once and cached, reducing overhead on repeated requests. PR [#5](https://github.com/matblack81/fastapi-router-versioning/pull/5) by [@matblack81](https://github.com/matblack81).
+* ✨ Track which routes belong to each version to invalidate the cache automatically when the route set changes. PR [#5](https://github.com/matblack81/fastapi-router-versioning/pull/5) by [@matblack81](https://github.com/matblack81).
 
 ### Fixes
 
-* 🐛 Fix WebSocket routes not being handled correctly in `versioned_routers` when the cache was active. PR [#5](https://github.com/mat81black/fastapi-router-versioning/pull/5) by [@mat81black](https://github.com/mat81black).
-* 🐛 Improve OpenAPI schema cache resilience: cache is now safely bypassed on unexpected errors instead of raising. PR [#5](https://github.com/mat81black/fastapi-router-versioning/pull/5) by [@mat81black](https://github.com/mat81black).
+* 🐛 Fix WebSocket routes not being handled correctly in `versioned_routers` when the cache was active. PR [#5](https://github.com/matblack81/fastapi-router-versioning/pull/5) by [@matblack81](https://github.com/matblack81).
+* 🐛 Improve OpenAPI schema cache resilience: cache is now safely bypassed on unexpected errors instead of raising. PR [#5](https://github.com/matblack81/fastapi-router-versioning/pull/5) by [@matblack81](https://github.com/matblack81).
 
 ### Internal
 
-* 👷 Add `prepare-release.yml` workflow and `scripts/prepare_release.py` for automated version bumping and release PR creation. PR [#6](https://github.com/mat81black/fastapi-router-versioning/pull/6) by [@mat81black](https://github.com/mat81black).
-* 👷 Add `changes` job to `test.yml` and `test-redistribute.yml` to skip CI when no relevant files are modified. PR [#10](https://github.com/mat81black/fastapi-router-versioning/pull/10) by [@mat81black](https://github.com/mat81black).
+* 👷 Add `prepare-release.yml` workflow and `scripts/prepare_release.py` for automated version bumping and release PR creation. PR [#6](https://github.com/matblack81/fastapi-router-versioning/pull/6) by [@matblack81](https://github.com/matblack81).
+* 👷 Add `changes` job to `test.yml` and `test-redistribute.yml` to skip CI when no relevant files are modified. PR [#10](https://github.com/matblack81/fastapi-router-versioning/pull/10) by [@matblack81](https://github.com/matblack81).
 
 ## 0.1.0 (2025-06-24)
 
