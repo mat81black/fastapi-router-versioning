@@ -2,6 +2,10 @@
 
 ## Latest Changes
 
+### Docs
+
+* 🔧 Replace old GitHub username in release notes links. PR [#120](https://github.com/matblack81/fastapi-router-versioning/pull/120) by [@matblack81](https://github.com/matblack81).
+
 ## 1.2.1 (2026-10-15)
 
 ### Docs
